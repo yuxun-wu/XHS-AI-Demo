@@ -1,0 +1,3520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>小红书 · 收藏智能分类 v3</title>
+<style>
+  :root {
+    --xhs-red: #ff2442;
+    --xhs-red-soft: #ffe8ec;
+    --xhs-red-dark: #d91c39;
+    --ink: #1a1a1a;
+    --ink-soft: #555;
+    --ink-faint: #999;
+    --bg: #f7f7f7;
+    --card: #ffffff;
+    --border: #ececec;
+    --warning: #f59e0b;
+    --warning-soft: #fff8e1;
+    --success: #10b981;
+    --success-soft: #d1fae5;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  /* ============ 用户切换条 ============ */
+  .user-switcher {
+    max-width: 1280px;
+    margin: 0 auto 20px;
+    background: #fff;
+    border-radius: 14px;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .switcher-label {
+    font-size: 13px;
+    color: var(--ink-soft);
+    font-weight: 500;
+  }
+
+  .user-tabs {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+  }
+
+  .user-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 22px;
+    background: #f5f5f5;
+    cursor: pointer;
+    transition: all .15s;
+    border: 1.5px solid transparent;
+  }
+
+  .user-tab:hover { background: #ececec; }
+
+  .user-tab.active {
+    background: var(--xhs-red-soft);
+    border-color: var(--xhs-red);
+  }
+
+  .user-tab .user-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--avatar-bg, linear-gradient(135deg, #ffb3c1, #ffd6dd));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .user-tab .user-info {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+  }
+
+  .user-tab .user-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .user-tab .user-desc {
+    font-size: 11px;
+    color: var(--ink-faint);
+  }
+
+  /* ============ 布局 ============ */
+  .phone-wrap {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 390px 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+
+  /* ============ 手机 ============ */
+  .phone {
+    width: 390px;
+    height: 780px;
+    background: #fff;
+    border-radius: 44px;
+    border: 10px solid #1a1a1a;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.18);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 24px;
+  }
+
+  .status-bar {
+    height: 44px;
+    background: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 24px;
+    font-size: 14px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .status-bar .right { display: flex; gap: 4px; align-items: center; font-size: 12px; }
+
+  .app-header {
+    background: #fff;
+    padding: 12px 16px 8px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .app-header .title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .back-btn {
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 20px;
+    color: var(--ink);
+  }
+
+  .app-title { font-size: 17px; font-weight: 600; }
+
+  .tabs {
+    display: flex;
+    gap: 18px;
+    font-size: 14px;
+    color: var(--ink-faint);
+  }
+
+  .tabs .tab {
+    padding: 6px 0;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .tabs .tab.active {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .tabs .tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 18px;
+    height: 3px;
+    background: var(--xhs-red);
+    border-radius: 2px;
+  }
+
+  .phone-body {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--bg);
+  }
+  .phone-body::-webkit-scrollbar { width: 0; }
+
+  /* AI 入口 / Pending 入口 / Applied 已分类入口 */
+  .phone-banner {
+    margin: 12px;
+    border-radius: 16px;
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform .15s;
+  }
+  .phone-banner:active { transform: scale(0.98); }
+
+  .ai-entry {
+    background: linear-gradient(135deg, #fff4f5 0%, #ffe8ec 50%, #ffd6dd 100%);
+  }
+
+  .ai-entry::before {
+    content: '';
+    position: absolute;
+    right: -20px; top: -20px;
+    width: 80px; height: 80px;
+    background: radial-gradient(circle, rgba(255,36,66,0.15), transparent 70%);
+    border-radius: 50%;
+  }
+
+  .pending-banner {
+    background: linear-gradient(135deg, #fff8e1, #fff4d6);
+    border: 1.5px solid #ffd54f;
+  }
+
+  .applied-banner {
+    background: linear-gradient(135deg, #f0fdf4, #d1fae5);
+    border: 1.5px solid #6ee7b7;
+  }
+
+  .banner-tag {
+    font-size: 11px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .ai-entry .banner-tag { color: var(--xhs-red); }
+  .pending-banner .banner-tag { color: #b45309; }
+  .applied-banner .banner-tag { color: #047857; }
+
+  .banner-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 2px;
+  }
+
+  .banner-sub {
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  .banner-arrow {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+  }
+  .ai-entry .banner-arrow { color: var(--xhs-red); }
+  .pending-banner .banner-arrow { color: #b45309; }
+  .applied-banner .banner-arrow { color: #047857; }
+
+  /* 瀑布流 */
+  .waterfall {
+    columns: 2;
+    column-gap: 8px;
+    padding: 4px 8px 80px;
+  }
+
+  /* ============ 专辑列表视图 ============ */
+  .album-list {
+    padding: 4px 12px 80px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .album-card {
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform .15s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  }
+  .album-card:active { transform: scale(0.97); }
+
+  .album-cover {
+    aspect-ratio: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .album-grid {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    position: relative;
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .album-grid.grid-1 { grid-template-columns: 1fr; }
+  .album-grid.grid-2 { grid-template-columns: 1fr 1fr; }
+  .album-grid.grid-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+  .album-grid.grid-3 .album-grid-cell:first-child { grid-row: 1 / 3; }
+  .album-grid.grid-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+
+  .album-grid-cell {
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    overflow: hidden;
+  }
+
+  .album-more {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+    backdrop-filter: blur(8px);
+  }
+
+  .album-info {
+    padding: 8px 10px 10px;
+  }
+
+  .album-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .album-count {
+    font-size: 11px;
+    color: var(--ink-faint);
+    margin-top: 2px;
+  }
+
+  /* 专辑空状态 */
+  .album-empty {
+    padding: 80px 30px;
+    text-align: center;
+  }
+
+  .album-empty-icon {
+    font-size: 64px;
+    opacity: 0.4;
+    margin-bottom: 16px;
+  }
+
+  .album-empty-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+
+  .album-empty-desc {
+    font-size: 13px;
+    color: var(--ink-faint);
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+
+  .album-empty-btn {
+    display: inline-block;
+    background: var(--xhs-red);
+    color: #fff;
+    font-size: 13px;
+    padding: 9px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all .15s;
+  }
+  .album-empty-btn:hover { background: var(--xhs-red-dark); }
+
+  /* 专辑详情头部 */
+  .album-detail-head {
+    padding: 16px;
+    margin: 4px 8px 0;
+    border-radius: 14px;
+  }
+
+  .album-detail-back {
+    font-size: 13px;
+    color: var(--ink-soft);
+    cursor: pointer;
+    margin-bottom: 12px;
+    display: inline-block;
+  }
+  .album-detail-back:hover { color: var(--ink); }
+
+  .album-detail-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .adt-name {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .adt-count {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-top: 2px;
+  }
+
+  .note-card {
+    break-inside: avoid;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: transform .15s;
+    position: relative;
+  }
+  .note-card:active { transform: scale(0.97); }
+
+  .note-cover {
+    width: 100%;
+    aspect-ratio: var(--ar, 3/4);
+    background: var(--cover-bg, linear-gradient(135deg, #ffd6dd, #ffe8ec));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .note-cover .emoji {
+    font-size: 48px;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+  }
+
+  .badge-stack {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    right: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+
+  .category-badge {
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    font-size: 9.5px;
+    padding: 3px 7px;
+    border-radius: 10px;
+    backdrop-filter: blur(8px);
+    white-space: nowrap;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  /* 待应用状态的角标 — 黄色虚线，区别于已应用的实色黑底 */
+  .category-badge.pending {
+    background: rgba(245, 158, 11, 0.85);
+    border: 1px dashed #fff;
+    color: #fff;
+  }
+
+  .category-badge.new {
+    background: rgba(16, 185, 129, 0.85);
+  }
+
+  .category-badge.kept {
+    background: rgba(0,0,0,0.5);
+  }
+
+  .pending-overlay-tag {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    background: var(--warning);
+    color: #fff;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .note-info { padding: 8px 10px 10px; }
+
+  .note-title {
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--ink);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .note-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--ink-faint);
+  }
+
+  .note-author { display: flex; align-items: center; gap: 4px; }
+
+  .avatar-mini {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ffb3c1, #ffd6dd);
+  }
+
+  .like { display: flex; align-items: center; gap: 2px; }
+
+  /* ============ 控制面板 ============ */
+  .control-panel {
+    background: #fff;
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+    min-height: 780px;
+  }
+
+  .panel-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-title .dot {
+    width: 8px; height: 8px;
+    background: var(--xhs-red);
+    border-radius: 50%;
+  }
+
+  .panel-sub {
+    color: var(--ink-soft);
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+
+  /* 前置询问（柔和粉色调，无警示意味） */
+  .pre-ask {
+    background: linear-gradient(135deg, #fff4f5, #ffe8ec);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .pre-ask-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+
+  .pre-ask-desc {
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+
+  .pre-ask-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .pre-ask-card {
+    background: #fff;
+    border: 2px solid #ffd6dd;
+    border-radius: 12px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .pre-ask-card:hover {
+    border-color: var(--xhs-red);
+    transform: translateY(-2px);
+  }
+
+  .pre-ask-card.active {
+    border-color: var(--xhs-red);
+    background: var(--xhs-red-soft);
+    box-shadow: 0 0 0 3px rgba(255, 36, 66, 0.1);
+  }
+
+  .pre-ask-card .pa-icon { font-size: 22px; margin-bottom: 6px; }
+  .pre-ask-card .pa-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .pre-ask-card .pa-desc { font-size: 11px; color: var(--ink-soft); line-height: 1.5; }
+
+  /* workflow / sections */
+  .workflow-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .workflow-card {
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+
+  .workflow-card:hover { border-color: var(--xhs-red); }
+  .workflow-card.active {
+    border-color: var(--xhs-red);
+    background: var(--xhs-red-soft);
+  }
+
+  .workflow-card .wf-icon { font-size: 22px; margin-bottom: 8px; }
+  .workflow-card .wf-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .workflow-card .wf-desc { font-size: 12px; color: var(--ink-soft); line-height: 1.5; }
+
+  /* 粒度选择 */
+  .granularity-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+
+  .granularity-card {
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 10px;
+    cursor: pointer;
+    transition: all .15s;
+    text-align: center;
+  }
+
+  .granularity-card:hover { border-color: var(--xhs-red); }
+  .granularity-card.active {
+    border-color: var(--xhs-red);
+    background: var(--xhs-red-soft);
+    box-shadow: 0 0 0 3px rgba(255, 36, 66, 0.08);
+  }
+
+  .gc-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+
+  .gc-icon { font-size: 20px; }
+
+  .gc-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .gc-count {
+    background: rgba(0,0,0,0.06);
+    color: var(--ink-soft);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 9px;
+  }
+
+  .granularity-card.active .gc-count {
+    background: var(--xhs-red);
+    color: #fff;
+  }
+
+  .gc-examples {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .gc-chip {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px 6px;
+    font-size: 11px;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .granularity-card.active .gc-chip {
+    border-color: rgba(255, 36, 66, 0.3);
+    background: rgba(255, 255, 255, 0.7);
+  }
+
+  .gc-empty {
+    font-size: 11px;
+    color: var(--ink-faint);
+    font-style: italic;
+  }
+
+  .section { margin-bottom: 20px; }
+
+  .section-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .section-label .hint {
+    font-weight: normal;
+    font-size: 12px;
+    color: var(--ink-faint);
+  }
+
+  .existing-cats-hint {
+    background: #f0f9ff;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #075985;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+
+  .existing-cats-hint b { color: #0369a1; }
+
+  .category-input-wrap {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .category-input {
+    flex: 1;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+    outline: none;
+    font-family: inherit;
+    transition: border-color .15s;
+  }
+  .category-input:focus { border-color: var(--xhs-red); }
+
+  .add-btn {
+    background: var(--ink);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 0 18px;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .category-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 32px;
+  }
+
+  .chip {
+    background: var(--xhs-red-soft);
+    color: var(--xhs-red-dark);
+    border-radius: 14px;
+    padding: 6px 12px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: chipIn .2s ease-out;
+  }
+
+  .chip.existing {
+    background: #e0f2fe;
+    color: #075985;
+  }
+
+  @keyframes chipIn {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .chip .remove {
+    cursor: pointer;
+    opacity: 0.6;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .chip .remove:hover { opacity: 1; }
+
+  .chip .lock {
+    font-size: 11px;
+    opacity: 0.7;
+  }
+
+  .preset-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .preset-chip {
+    background: #f0f0f0;
+    color: var(--ink-soft);
+    border-radius: 12px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .preset-chip:hover { background: var(--xhs-red-soft); color: var(--xhs-red-dark); }
+
+  /* multi-toggle */
+  .multi-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    background: #fafafa;
+    border-radius: 12px;
+    margin-bottom: 16px;
+  }
+
+  .multi-toggle .label { font-size: 13px; color: var(--ink); }
+  .multi-toggle .desc { font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
+
+  .switch {
+    width: 40px;
+    height: 22px;
+    background: #ddd;
+    border-radius: 11px;
+    position: relative;
+    cursor: pointer;
+    transition: background .2s;
+    flex-shrink: 0;
+  }
+
+  .switch.on { background: var(--xhs-red); }
+
+  .switch::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 18px; height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform .2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+
+  .switch.on::after { transform: translateX(18px); }
+
+  .start-btn {
+    width: 100%;
+    background: var(--xhs-red);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .2s;
+    margin-top: 8px;
+  }
+  .start-btn:hover { background: var(--xhs-red-dark); transform: translateY(-1px); }
+  .start-btn:disabled {
+    background: #ddd;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .secondary-btn {
+    width: 100%;
+    background: #fff;
+    color: var(--ink);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    margin-top: 10px;
+    transition: all .15s;
+  }
+  .secondary-btn:hover { border-color: var(--ink-soft); }
+
+  /* processing */
+  .processing { text-align: center; padding: 40px 20px; }
+
+  .processing .spinner {
+    width: 44px; height: 44px;
+    border: 3px solid var(--xhs-red-soft);
+    border-top-color: var(--xhs-red);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .processing .status-text { font-size: 14px; color: var(--ink-soft); margin-bottom: 6px; }
+  .processing .current-note { font-size: 13px; color: var(--ink); font-weight: 500; height: 18px; }
+
+  .progress-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--xhs-red-soft);
+    border-radius: 2px;
+    margin-top: 16px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--xhs-red);
+    border-radius: 2px;
+    transition: width .3s;
+  }
+
+  /* ============ 二次确认条 ============ */
+  .confirm-bar {
+    background: linear-gradient(135deg, #fff8e1, #fff4d6);
+    border: 2px solid var(--warning);
+    border-radius: 16px;
+    padding: 16px 18px;
+    margin-bottom: 18px;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+
+  .confirm-bar.applied {
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    border-color: var(--success);
+  }
+
+  .confirm-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #92400e;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .confirm-bar.applied .confirm-title { color: #065f46; }
+
+  .confirm-desc {
+    font-size: 12px;
+    color: #78350f;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+
+  .confirm-bar.applied .confirm-desc { color: #047857; }
+
+  .diff-stats {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .diff-stat {
+    background: rgba(255,255,255,0.7);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .diff-stat .num { font-weight: 700; font-size: 14px; }
+  .diff-stat.new .num { color: var(--success); }
+  .diff-stat.change .num { color: var(--warning); }
+  .diff-stat.keep .num { color: var(--ink-soft); }
+  .diff-stat.unclassified .num { color: #6366f1; }
+
+  .confirm-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-apply {
+    flex: 1;
+    background: var(--xhs-red);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .15s;
+  }
+  .btn-apply:hover { background: var(--xhs-red-dark); }
+
+  .btn-discard {
+    background: #fff;
+    color: var(--ink-soft);
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-discard:hover { color: var(--ink); border-color: var(--ink-soft); }
+
+  /* results */
+  .results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    gap: 12px;
+  }
+
+  .results-summary { font-size: 13px; color: var(--ink-soft); }
+
+  .reset-link {
+    color: var(--xhs-red);
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  /* suggestions (manual mode) */
+  .suggestion-banner {
+    background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+    border: 1px solid #7dd3fc;
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+
+  .suggestion-banner .sb-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #075985;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .suggestion-banner .sb-desc {
+    font-size: 12px;
+    color: #0c4a6e;
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+
+  .suggestion-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .sug-chip {
+    background: #fff;
+    border: 1px solid #7dd3fc;
+    color: #075985;
+    border-radius: 12px;
+    padding: 5px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all .15s;
+  }
+  .sug-chip:hover { background: #f0f9ff; }
+  .sug-chip.adopted {
+    background: var(--xhs-red);
+    color: #fff;
+    border-color: var(--xhs-red);
+  }
+
+  .sug-actions { display: flex; gap: 8px; align-items: center; }
+
+  .sug-btn {
+    background: var(--xhs-red);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 500;
+  }
+  .sug-btn:disabled { background: #ddd; cursor: not-allowed; }
+
+  .sug-dismiss { color: var(--ink-faint); font-size: 12px; cursor: pointer; }
+
+  /* category card */
+  .category-result {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    background: #fff;
+    transition: all .25s;
+  }
+
+  .category-result.merging {
+    border-color: var(--xhs-red);
+    box-shadow: 0 0 0 3px var(--xhs-red-soft);
+  }
+
+  .category-result.new-cat {
+    border-color: var(--success);
+    box-shadow: 0 0 0 2px var(--success-soft);
+  }
+
+  .category-head {
+    padding: 12px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    background: var(--cat-bg, #f9f9f9);
+    gap: 8px;
+  }
+
+  .category-head .left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .cat-emoji { font-size: 20px; flex-shrink: 0; }
+
+  .cat-name {
+    font-size: 15px;
+    font-weight: 600;
+    cursor: text;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background .15s;
+  }
+  .cat-name:hover { background: rgba(0,0,0,0.05); }
+
+  .cat-name[contenteditable="true"] {
+    background: #fff;
+    outline: 2px solid var(--xhs-red);
+    cursor: text;
+  }
+
+  .cat-tag {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+    margin-left: 4px;
+  }
+
+  .cat-tag.new { background: var(--success); color: #fff; }
+  .cat-tag.existing { background: #075985; color: #fff; }
+
+  .cat-count {
+    background: rgba(0,0,0,0.08);
+    color: var(--ink);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .cat-actions { display: flex; gap: 4px; align-items: center; }
+
+  .cat-action {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.6);
+    cursor: pointer;
+    font-size: 13px;
+    transition: all .15s;
+    color: var(--ink-soft);
+  }
+  .cat-action:hover { background: #fff; color: var(--ink); }
+  .cat-action.danger:hover { color: var(--xhs-red); }
+
+  .toggle-icon {
+    color: var(--ink-faint);
+    font-size: 12px;
+    transition: transform .2s;
+    margin-left: 4px;
+  }
+
+  .category-result.open .toggle-icon { transform: rotate(90deg); }
+
+  .category-notes {
+    display: none;
+    padding: 8px 12px 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .category-result.open .category-notes { display: flex; }
+
+  .mini-note {
+    width: calc(33.333% - 6px);
+    background: var(--mini-bg, #ffe8ec);
+    border-radius: 10px;
+    padding: 8px;
+    aspect-ratio: 3/4;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: transform .15s;
+    position: relative;
+  }
+  .mini-note:hover { transform: scale(1.03); }
+
+  .mini-emoji { font-size: 24px; }
+
+  .mini-title {
+    font-size: 10px;
+    color: var(--ink);
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .multi-flag {
+    position: absolute;
+    top: 4px; right: 4px;
+    background: var(--xhs-red);
+    color: #fff;
+    font-size: 9px;
+    padding: 1px 4px;
+    border-radius: 4px;
+    line-height: 1.3;
+  }
+
+  .new-flag {
+    position: absolute;
+    top: 4px; left: 4px;
+    background: var(--success);
+    color: #fff;
+    font-size: 9px;
+    padding: 1px 4px;
+    border-radius: 4px;
+    line-height: 1.3;
+  }
+
+  .ai-tag {
+    background: linear-gradient(135deg, var(--xhs-red), #ff6b85);
+    color: #fff;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    font-weight: 500;
+  }
+
+  .merge-hint {
+    background: var(--xhs-red-soft);
+    color: var(--xhs-red-dark);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .merge-hint .cancel {
+    cursor: pointer;
+    color: var(--xhs-red);
+    text-decoration: underline;
+    font-size: 12px;
+  }
+
+  /* toast */
+  /* ============ 未归类二次询问 Modal ============ */
+  .modal-mask {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    opacity: 0;
+    transition: opacity .2s;
+    backdrop-filter: blur(2px);
+  }
+  .modal-mask.show { opacity: 1; }
+
+  .modal-card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 28px 24px 20px;
+    width: 420px;
+    max-width: calc(100vw - 40px);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+    transform: scale(0.92);
+    transition: transform .2s;
+    text-align: center;
+  }
+  .modal-mask.show .modal-card { transform: scale(1); }
+
+  .modal-emoji {
+    font-size: 44px;
+    margin-bottom: 8px;
+  }
+
+  .modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+
+  .modal-desc {
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+    margin-bottom: 18px;
+  }
+
+  .modal-preview {
+    background: #fafafa;
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 18px;
+    text-align: left;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .modal-preview-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+  }
+  .modal-preview-item + .modal-preview-item {
+    border-top: 1px solid #f0f0f0;
+  }
+
+  .modal-preview-emoji {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .modal-preview-title {
+    font-size: 12px;
+    color: var(--ink);
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .modal-preview-more {
+    text-align: center;
+    font-size: 11px;
+    color: var(--ink-faint);
+    padding: 6px 0 2px;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .modal-btn-secondary,
+  .modal-btn-primary {
+    flex: 1;
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .15s;
+  }
+
+  .modal-btn-secondary {
+    background: #f0f0f0;
+    color: var(--ink);
+  }
+  .modal-btn-secondary:hover { background: #e5e5e5; }
+
+  .modal-btn-primary {
+    background: var(--xhs-red);
+    color: #fff;
+  }
+  .modal-btn-primary:hover { background: var(--xhs-red-dark); }
+
+  /* ============ 合并专辑对话框 ============ */
+  .merge-modal .modal-card { width: 460px; }
+
+  .merge-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 16px 0 20px;
+  }
+
+  .merge-cat {
+    flex: 1;
+    border-radius: 12px;
+    padding: 12px 8px;
+    text-align: center;
+    min-width: 0;
+  }
+
+  .mc-emoji { font-size: 26px; margin-bottom: 4px; }
+  .mc-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mc-count {
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-top: 2px;
+  }
+
+  .merge-plus {
+    font-size: 22px;
+    color: var(--ink-faint);
+    font-weight: 300;
+    flex-shrink: 0;
+  }
+
+  .merge-suggest-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .merge-suggest-label {
+    font-size: 13px;
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .merge-suggest-tag {
+    background: linear-gradient(135deg, var(--xhs-red), #ff6b85);
+    color: #fff;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+  }
+
+  .merge-name-input {
+    width: 100%;
+    border: 2px solid var(--xhs-red-soft);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ink);
+    outline: none;
+    font-family: inherit;
+    background: #fffafb;
+    transition: border-color .15s;
+  }
+  .merge-name-input:focus {
+    border-color: var(--xhs-red);
+    background: #fff;
+  }
+
+  .merge-quick-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .merge-quick-chip {
+    background: #f5f5f5;
+    color: var(--ink-soft);
+    border-radius: 14px;
+    padding: 5px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .15s;
+    user-select: none;
+  }
+  .merge-quick-chip:hover {
+    background: var(--xhs-red-soft);
+    color: var(--xhs-red-dark);
+  }
+
+  /* toast */
+  .toast {
+    position: fixed;
+    top: 40px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: var(--ink);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 22px;
+    font-size: 13px;
+    opacity: 0;
+    pointer-events: none;
+    transition: all .25s;
+    z-index: 100;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  @media (max-width: 900px) {
+    .phone-wrap { grid-template-columns: 1fr; }
+    .phone { margin: 0 auto; position: relative; top: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- 用户切换条 -->
+<div class="user-switcher" id="user-switcher"></div>
+
+<div class="phone-wrap">
+
+  <div class="phone">
+    <div class="status-bar">
+      <span>9:41</span>
+      <span class="right">●●●● 5G ▮</span>
+    </div>
+
+    <div class="app-header">
+      <div class="title-row">
+        <span class="back-btn">‹</span>
+        <span class="app-title" id="app-title">我的收藏</span>
+      </div>
+      <div class="tabs">
+        <div class="tab" id="tab-all" onclick="switchPhoneTab('all')">
+          全部 <span id="all-count" style="font-size:12px;color:var(--ink-faint);">(0)</span>
+        </div>
+        <div class="tab" id="tab-album" onclick="switchPhoneTab('album')">
+          专辑 <span id="album-count" style="font-size:12px;color:var(--ink-faint);"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="phone-body">
+      <div id="phone-banner-area"></div>
+      <div class="waterfall" id="waterfall"></div>
+    </div>
+  </div>
+
+  <div class="control-panel" id="panel"></div>
+
+</div>
+
+<script>
+/* ============ 笔记数据 ============ */
+const allNotes = [
+  // 美食 / 食谱（id 1-12）
+  { id: 1, title: '一周减脂晚餐 | 低卡又顶饱的5天食谱', emoji: '🥗', tags: ['减脂','食谱','晚餐','健身餐'], bg: '#d6ffe5', ar: '3/4', author: '小厨娘', likes: '2.3w' },
+  { id: 2, title: '咖啡新手必看｜10种咖啡的区别一次说清', emoji: '☕', tags: ['咖啡','美食','饮品'], bg: '#ffd6dd', ar: '4/5', author: '咖啡笔记', likes: '7421' },
+  { id: 3, title: '空气炸锅必做｜10款零失败下饭菜', emoji: '🍗', tags: ['空气炸锅','食谱','美食'], bg: '#d6ffe5', ar: '1/1', author: '懒人厨房', likes: '6.7w' },
+  { id: 4, title: '减肥不饿肚子｜这碗高蛋白杂粮饭饱腹一整天', emoji: '🍚', tags: ['减脂餐','高蛋白','美食','健身餐'], bg: '#d6ffe5', ar: '4/5', author: '健康饮食', likes: '2.1w' },
+  { id: 5, title: '懒人早餐｜5分钟做一份元气满满三明治', emoji: '🥪', tags: ['早餐','懒人','三明治','美食'], bg: '#d6ffe5', ar: '3/4', author: '元气厨房', likes: '4.4w' },
+  { id: 6, title: '日式便当｜一周不重样的午餐盒子', emoji: '🍱', tags: ['便当','日式','食谱','午餐'], bg: '#fff0d6', ar: '4/5', author: '便当君', likes: '5.2w' },
+  { id: 7, title: '低脂版麻辣香锅 | 减脂期也能吃过瘾', emoji: '🌶️', tags: ['麻辣香锅','减脂','食谱'], bg: '#ffe0d6', ar: '3/4', author: '辣妈厨房', likes: '1.8w' },
+  { id: 8, title: '手冲咖啡入门｜从豆子到萃取一次讲清', emoji: '☕', tags: ['咖啡','手冲','饮品'], bg: '#e8d6ff', ar: '4/5', author: 'BaristaWang', likes: '9876' },
+  { id: 9, title: '5分钟搞定的低卡奶昔｜超适合早餐', emoji: '🥤', tags: ['奶昔','低卡','早餐','饮品'], bg: '#d6f0ff', ar: '3/4', author: '健康每日', likes: '1.2w' },
+  { id: 10, title: '家庭版港式茶餐厅菜单复刻', emoji: '🍜', tags: ['港式','食谱','复刻'], bg: '#ffe8d6', ar: '4/5', author: '港味记', likes: '3.1w' },
+  { id: 11, title: '一人食｜深夜不胖的5种泡面升级版', emoji: '🍲', tags: ['一人食','泡面','深夜','食谱'], bg: '#fff4d6', ar: '3/4', author: '独居好食', likes: '4.5w' },
+  { id: 12, title: '快手便当 | 上班族的15分钟午餐', emoji: '🥡', tags: ['便当','快手','午餐','上班族'], bg: '#fff0d6', ar: '4/5', author: '上班族日记', likes: '2.6w' },
+
+  // 穿搭（id 13-24）
+  { id: 13, title: '入秋穿搭｜温柔奶油色调三件套', emoji: '🧥', tags: ['秋季穿搭','奶油色','穿搭'], bg: '#fff4d6', ar: '4/5', author: 'fashion小姐', likes: '8632' },
+  { id: 14, title: '小个子梨形 | 高腰阔腿裤这样穿显瘦10斤', emoji: '👖', tags: ['穿搭','小个子','梨形','显瘦'], bg: '#fff4d6', ar: '3/4', author: '梨形女孩', likes: '2.7w' },
+  { id: 15, title: '通勤穿搭｜西装外套+毛衣这样叠才高级', emoji: '👔', tags: ['通勤','西装','叠穿','穿搭'], bg: '#fff4d6', ar: '4/5', author: '上班族日记', likes: '1.8w' },
+  { id: 16, title: '冬季羽绒服怎么选才不显肿', emoji: '🧥', tags: ['冬季','羽绒服','穿搭'], bg: '#d6e8ff', ar: '3/4', author: '冬日暖意', likes: '3.5w' },
+  { id: 17, title: '法式复古风｜碎花裙+乐福鞋一周搭配', emoji: '👗', tags: ['法式','复古','碎花裙','穿搭'], bg: '#ffd6dd', ar: '4/5', author: '巴黎日记', likes: '4.2w' },
+  { id: 18, title: '日系慵懒风｜阔腿裤+oversized衬衫', emoji: '👚', tags: ['日系','慵懒','穿搭'], bg: '#fff4d6', ar: '3/4', author: '森系少女', likes: '1.9w' },
+  { id: 19, title: '梨形腿粗女孩的夏日穿搭红黑榜', emoji: '👗', tags: ['梨形','显瘦','穿搭','夏季'], bg: '#ffe8d6', ar: '4/5', author: '梨形女孩', likes: '5.1w' },
+  { id: 20, title: '韩系简约风｜基础款也能穿出高级感', emoji: '👕', tags: ['韩系','简约','穿搭'], bg: '#fff4d6', ar: '3/4', author: 'K-Style', likes: '2.2w' },
+  { id: 21, title: '微胖女生显瘦穿搭｜遮肉显高一步到位', emoji: '👖', tags: ['微胖','显瘦','穿搭'], bg: '#ffe8d6', ar: '4/5', author: '显瘦专家', likes: '6.8w' },
+  { id: 22, title: '约会穿搭｜温柔又心动的5套look', emoji: '💕', tags: ['约会','穿搭','温柔'], bg: '#ffd6dd', ar: '3/4', author: 'date diary', likes: '3.7w' },
+  { id: 23, title: 'OOTD｜25岁通勤族的一周穿搭', emoji: '👜', tags: ['通勤','OOTD','穿搭'], bg: '#fff4d6', ar: '4/5', author: '25岁日记', likes: '1.5w' },
+  { id: 24, title: '小个子155显高穿搭｜亲测视觉+10cm', emoji: '👠', tags: ['小个子','显高','穿搭'], bg: '#ffe8d6', ar: '3/4', author: '小个子俱乐部', likes: '4.6w' },
+
+  // 旅行（id 25-36）
+  { id: 25, title: '京都5天4夜｜避坑路线+小众咖啡馆地图', emoji: '⛩️', tags: ['京都','日本','旅行','咖啡馆'], bg: '#ffd6dd', ar: '3/4', author: '旅行的喵', likes: '4.1w' },
+  { id: 26, title: '冲绳跳岛攻略 | 那霸出发3天玩遍4座岛', emoji: '🏝️', tags: ['冲绳','跳岛','日本','旅行'], bg: '#d6f0ff', ar: '4/5', author: '环游君', likes: '1.5w' },
+  { id: 27, title: '云南大理7天 | 一个人也很自在', emoji: '🏔️', tags: ['大理','云南','旅行'], bg: '#ffd6dd', ar: '3/4', author: '在路上', likes: '2.4w' },
+  { id: 28, title: '小众旅行地｜贵州黔东南苗寨之旅', emoji: '🏞️', tags: ['贵州','小众','旅行'], bg: '#ffd6dd', ar: '3/4', author: '远方', likes: '8.1k' },
+  { id: 29, title: '泰国清迈8天 | 大象保护营+夜市美食', emoji: '🐘', tags: ['清迈','泰国','旅行'], bg: '#fff4d6', ar: '4/5', author: '环球娃娃', likes: '3.3w' },
+  { id: 30, title: '巴厘岛蜜月｜5星酒店+秘境瀑布详细攻略', emoji: '🌺', tags: ['巴厘岛','蜜月','旅行'], bg: '#ffd6dd', ar: '3/4', author: '蜜月夫妇', likes: '4.7w' },
+  { id: 31, title: '北海道冬季 | 札幌小樽函馆7日攻略', emoji: '⛄', tags: ['北海道','日本','冬季','旅行'], bg: '#d6e8ff', ar: '4/5', author: '雪国行者', likes: '5.4w' },
+  { id: 32, title: '土耳其10天｜热气球+棉花堡完美路线', emoji: '🎈', tags: ['土耳其','热气球','旅行'], bg: '#ffe0d6', ar: '3/4', author: '世界之窗', likes: '3.8w' },
+  { id: 33, title: '川西小环线 | 4天3晚自驾稻城亚丁', emoji: '🏔️', tags: ['川西','稻城','自驾','旅行'], bg: '#d6f0ff', ar: '4/5', author: '自驾君', likes: '2.9w' },
+  { id: 34, title: '青海湖环湖｜7月油菜花海一生必去', emoji: '🌻', tags: ['青海','环湖','旅行'], bg: '#fff4d6', ar: '3/4', author: '风景控', likes: '4.1w' },
+  { id: 35, title: '潜水入门｜马来诗巴丹OW考证心得', emoji: '🤿', tags: ['潜水','马来西亚','旅行','考证'], bg: '#d6f0ff', ar: '4/5', author: '潜水员阿K', likes: '1.7w' },
+  { id: 36, title: '杭州周末游 | 西湖龙井村半日小众路线', emoji: '🍵', tags: ['杭州','周末','旅行'], bg: '#d6ffe5', ar: '3/4', author: '周末出走', likes: '8932' },
+
+  // 美妆 + 护肤（id 37-50）
+  { id: 37, title: '黄黑皮闭眼入｜YSL最新限定唇釉试色', emoji: '💄', tags: ['口红','试色','美妆','唇釉'], bg: '#ffe0d6', ar: '1/1', author: '美妆研究所', likes: '1.2w' },
+  { id: 38, title: '混油皮防晒测评 | 17款热门到底哪款最值', emoji: '🧴', tags: ['防晒','测评','护肤'], bg: '#ffe0d6', ar: '3/4', author: '成分党lab', likes: '4.3w' },
+  { id: 39, title: '黑头闭口反复长？我的护肤流程大公开', emoji: '✨', tags: ['护肤','黑头','闭口'], bg: '#ffe0d6', ar: '4/5', author: '皮肤管理师', likes: '5.5w' },
+  { id: 40, title: '冬季粉底液大测评｜干皮油皮都能找到本命', emoji: '💁', tags: ['粉底液','测评','底妆','美妆'], bg: '#ffe0d6', ar: '4/5', author: '底妆达人', likes: '3.4w' },
+  { id: 41, title: '小白也能学会的眼影画法｜显眼大3倍', emoji: '👁️', tags: ['眼影','新手','美妆','化妆'], bg: '#ffe0d6', ar: '1/1', author: '画妆教程', likes: '2.8w' },
+  { id: 42, title: '韩系氛围感裸妆教程｜约会必备', emoji: '💋', tags: ['裸妆','韩系','化妆','约会'], bg: '#ffd6dd', ar: '4/5', author: 'K-Beauty', likes: '4.9w' },
+  { id: 43, title: '敏感肌的换季护肤清单｜亲测有效', emoji: '🌸', tags: ['敏感肌','换季','护肤'], bg: '#ffeae0', ar: '3/4', author: '敏感肌日记', likes: '3.6w' },
+  { id: 44, title: '抗老精华横评｜30+必囤TOP5', emoji: '💎', tags: ['抗老','精华','护肤'], bg: '#ffe0d6', ar: '4/5', author: '抗老研究室', likes: '2.5w' },
+  { id: 45, title: '修容打圈圈｜假装高颅顶+小脸的5个步骤', emoji: '✨', tags: ['修容','化妆','美妆'], bg: '#ffe5d6', ar: '3/4', author: '修容大师', likes: '1.9w' },
+  { id: 46, title: '美瞳隐藏色推荐｜日杂感伪素颜', emoji: '👀', tags: ['美瞳','美妆','日杂'], bg: '#ffd6dd', ar: '4/5', author: '瞳色控', likes: '6.3w' },
+  { id: 47, title: '油皮控油全攻略｜从洁面到散粉', emoji: '🧴', tags: ['油皮','控油','护肤'], bg: '#ffeae0', ar: '3/4', author: '油皮自救', likes: '4.1w' },
+  { id: 48, title: '通勤淡妆｜5分钟搞定干净感妆容', emoji: '💄', tags: ['通勤','淡妆','化妆'], bg: '#ffe0d6', ar: '4/5', author: '早八妆姐', likes: '5.7w' },
+  { id: 49, title: '香水入门｜按场景挑选你的本命', emoji: '🌹', tags: ['香水','美妆','入门'], bg: '#ffd6dd', ar: '3/4', author: '香气日记', likes: '2.2w' },
+  { id: 50, title: '抗痘秘籍｜成分党的修复路线', emoji: '🌿', tags: ['抗痘','护肤','成分'], bg: '#d6ffe5', ar: '4/5', author: '战痘女孩', likes: '3.8w' },
+
+  // 家居（id 51-62）
+  { id: 51, title: '出租屋大改造！200元搞定北欧风卧室', emoji: '🛋️', tags: ['家居','改造','北欧','出租屋'], bg: '#d6f0ff', ar: '4/5', author: '住小屋', likes: '3.6w' },
+  { id: 52, title: '小户型救星 | 这5个收纳神器我吹爆', emoji: '📦', tags: ['收纳','家居','好物'], bg: '#d6f0ff', ar: '4/5', author: 'organize', likes: '9201' },
+  { id: 53, title: '租房布置｜100块改造出租屋阳台', emoji: '🌿', tags: ['出租屋','阳台','改造','家居'], bg: '#d6f0ff', ar: '3/4', author: '小生活', likes: '7843' },
+  { id: 54, title: '20㎡小卧室也能有衣帽间｜全屋定制经验', emoji: '👗', tags: ['衣帽间','家装','定制','家居'], bg: '#d6f0ff', ar: '4/5', author: '装修日记', likes: '1.9w' },
+  { id: 55, title: '日式侘寂风改造｜软装清单全公开', emoji: '🪴', tags: ['日式','侘寂','改造','家居'], bg: '#fff4d6', ar: '3/4', author: '空间美学', likes: '4.5w' },
+  { id: 56, title: '租房党厨房改造｜500元升级出租屋', emoji: '🍳', tags: ['厨房','改造','出租屋','家居'], bg: '#d6f0ff', ar: '4/5', author: '厨房改造记', likes: '3.2w' },
+  { id: 57, title: '客厅断舍离｜扔掉这10样空间瞬间宽敞', emoji: '🛋️', tags: ['断舍离','客厅','家居','收纳'], bg: '#e8f0ff', ar: '3/4', author: '极简生活', likes: '5.4w' },
+  { id: 58, title: '阳台变咖啡角｜独居女孩的小确幸', emoji: '☕', tags: ['阳台','咖啡角','家居','独居'], bg: '#fff4d6', ar: '4/5', author: '独居小姐', likes: '2.8w' },
+  { id: 59, title: '宜家必买清单TOP20｜超高性价比', emoji: '🛒', tags: ['宜家','好物','家居'], bg: '#d6e8ff', ar: '3/4', author: '宜家迷', likes: '6.7w' },
+  { id: 60, title: '小户型挑高loft装修避坑指南', emoji: '🏠', tags: ['loft','装修','家居','小户型'], bg: '#d6f0ff', ar: '4/5', author: 'loft主理人', likes: '1.6w' },
+  { id: 61, title: '绿植入门｜新手0门槛养活的8种植物', emoji: '🌱', tags: ['绿植','新手','家居'], bg: '#d6ffe5', ar: '3/4', author: '绿植事务所', likes: '4.3w' },
+  { id: 62, title: '香薰好物分享｜让家里像精品酒店', emoji: '🕯️', tags: ['香薰','好物','家居'], bg: '#ffe8d6', ar: '4/5', author: '香氛生活', likes: '2.1w' },
+
+  // 健身（id 63-72）
+  { id: 63, title: '帕梅拉跟练30天 | 真实身材对比', emoji: '💪', tags: ['健身','减脂','跟练'], bg: '#e2d6ff', ar: '3/4', author: 'Lily', likes: '5.8w' },
+  { id: 64, title: '4个动作练翘臀 | 在家也能练', emoji: '🍑', tags: ['翘臀','健身','居家'], bg: '#e2d6ff', ar: '3/4', author: 'fit girl', likes: '3.2w' },
+  { id: 65, title: 'YOGA入门｜每天15分钟改善体态', emoji: '🧘', tags: ['瑜伽','体态','居家','健身'], bg: '#e2d6ff', ar: '3/4', author: 'yoga lab', likes: '1.6w' },
+  { id: 66, title: 'Keep跟练90天｜从S到M的真实变化', emoji: '💪', tags: ['跟练','减脂','健身'], bg: '#e2d6ff', ar: '4/5', author: '减脂日记', likes: '4.9w' },
+  { id: 67, title: '马甲线挑战 | 4周腹肌训练计划', emoji: '🏋️', tags: ['马甲线','腹肌','健身'], bg: '#ead6ff', ar: '3/4', author: '腹肌养成', likes: '3.7w' },
+  { id: 68, title: '普拉提初体验｜改善驼背圆肩', emoji: '🤸', tags: ['普拉提','体态','健身'], bg: '#e2d6ff', ar: '4/5', author: '体态修复', likes: '2.4w' },
+  { id: 69, title: '减脂期蛋白质摄入指南｜不掉肌肉', emoji: '🥩', tags: ['减脂','蛋白质','健身','饮食'], bg: '#d6ffe5', ar: '3/4', author: '健身饮食', likes: '1.8w' },
+  { id: 70, title: 'HIIT燃脂｜20分钟相当于跑步1小时', emoji: '🔥', tags: ['HIIT','燃脂','健身'], bg: '#ffe0d6', ar: '4/5', author: 'HIIT教练', likes: '5.2w' },
+  { id: 71, title: '居家无器械训练｜全身燃脂15天', emoji: '🏃', tags: ['居家','燃脂','健身'], bg: '#e2d6ff', ar: '3/4', author: '居家训练', likes: '3.5w' },
+  { id: 72, title: '冥想入门｜睡前10分钟放松法', emoji: '🧘‍♀️', tags: ['冥想','放松','瑜伽'], bg: '#ead6ff', ar: '4/5', author: '冥想日记', likes: '1.4w' },
+
+  // 其他热门 — 数码/萌宠/手帐/读书（id 73-80）
+  { id: 73, title: 'iPad Pro生产力指南｜大学生必装App', emoji: '💻', tags: ['iPad','数码','学习','生产力'], bg: '#d6e8ff', ar: '4/5', author: '数码生活', likes: '6.2w' },
+  { id: 74, title: '相机入门｜从手机到微单的过渡选择', emoji: '📷', tags: ['相机','数码','摄影'], bg: '#d6f0ff', ar: '3/4', author: '摄影小白', likes: '2.7w' },
+  { id: 75, title: '布偶猫日常｜养猫一年的真实开销', emoji: '🐱', tags: ['猫','萌宠','日常'], bg: '#ffe8d6', ar: '4/5', author: '布偶妈妈', likes: '8.1w' },
+  { id: 76, title: '柯基的100种可爱瞬间｜养狗日记', emoji: '🐶', tags: ['狗','柯基','萌宠'], bg: '#fff0d6', ar: '3/4', author: '柯基麻麻', likes: '7.3w' },
+  { id: 77, title: '手帐排版灵感｜10种风格随便抄', emoji: '📔', tags: ['手帐','排版','文具'], bg: '#ffd6dd', ar: '4/5', author: '手帐少女', likes: '3.4w' },
+  { id: 78, title: '一年读100本书｜我的阅读笔记体系', emoji: '📚', tags: ['读书','笔记','学习'], bg: '#e8d6ff', ar: '3/4', author: '阅读笔记', likes: '2.6w' },
+  { id: 79, title: '考研英语单词｜30天背完核心5500', emoji: '📖', tags: ['考研','学习','英语'], bg: '#d6e8ff', ar: '4/5', author: '考研姐', likes: '4.5w' },
+  { id: 80, title: '番茄工作法实测｜专注力提升200%', emoji: '🍅', tags: ['效率','学习','番茄钟'], bg: '#ffe0d6', ar: '3/4', author: '效率派', likes: '1.9w' },
+];
+
+// 兼容旧代码：notes 默认指向当前用户的收藏切片
+let notes = [];
+function rebuildCurrentNotes() {
+  const u = currentUser();
+  notes = allNotes.filter(n => u.collectedIds.includes(n.id));
+}
+
+/* ============ 四个模拟用户 ============
+   - userA: 60 收藏, 0 专辑
+   - userB: 62 收藏, 2 个空专辑
+   - userC: 65 收藏, 4 个专辑, 部分笔记已分类（其余未归类）
+   - userD: 68 收藏, 若干专辑, 全部笔记已归类
+*/
+
+// 工具：用集合生成一组 id 数组（去重+排序）
+function _ids() { return Array.from(new Set([].concat(...arguments))).sort((a,b)=>a-b); }
+
+const users = [
+  {
+    id: 'userA',
+    name: '小安',
+    avatarBg: 'linear-gradient(135deg, #ff8a9b, #ffb3c1)',
+    initial: '安',
+    // 60 条：偏向美食、旅行、家居（id 1-12,13-16,25-36,51-62, 73-80）
+    collectedIds: _ids(
+      [1,2,3,4,5,6,7,8,9,10,11,12],             // 美食 12
+      [13,14,15,16,17,18,19,20],                // 穿搭 8
+      [25,26,27,28,29,30,31,32,33,34,35,36],    // 旅行 12
+      [37,38,39,40,41,42],                      // 美妆 6
+      [51,52,53,54,55,56,57,58,59,60,61,62],   // 家居 12
+      [73,74,75,76,77,78,79,80],                // 其他 8 -> 共 58
+      [63,64]                                    // 健身 2 -> 共 60
+    ),
+    applied: { categoryMap: {}, assignment: {} },
+  },
+  {
+    id: 'userB',
+    name: '小贝',
+    avatarBg: 'linear-gradient(135deg, #60a5fa, #93c5fd)',
+    initial: '贝',
+    // 62 条：偏向穿搭、美妆、健身
+    collectedIds: _ids(
+      [1,4,5,7,9,11,12],                        // 美食 7
+      [13,14,15,16,17,18,19,20,21,22,23,24],   // 穿搭 12
+      [25,27,29,31,33,35],                      // 旅行 6
+      [37,38,39,40,41,42,43,44,45,46,47,48,49,50], // 美妆护肤 14
+      [51,55,57,59,61],                         // 家居 5
+      [63,64,65,66,67,68,69,70,71,72],         // 健身 10
+      [73,75,77,79]                              // 其他 4 -> 共 62
+    ),
+    // 建了两个专辑但都为空
+    applied: {
+      categoryMap: {
+        '美食': { match: ['食谱','美食','咖啡','早餐','三明治','空气炸锅','减脂餐','高蛋白','懒人','便当','饮品'], emoji: '🍜', bg: '#d6ffe5' },
+        '穿搭': { match: ['穿搭','奶油色','小个子','梨形','西装','叠穿','通勤','韩系','日系','法式','显瘦','OOTD','显高'], emoji: '👗', bg: '#fff4d6' },
+      },
+      assignment: {},
+    },
+  },
+  {
+    id: 'userC',
+    name: '小晨',
+    avatarBg: 'linear-gradient(135deg, #fbbf24, #fde68a)',
+    initial: '晨',
+    // 65 条：综合较广
+    collectedIds: _ids(
+      [1,2,3,5,6,8,10,11,12],                  // 美食 9
+      [13,14,17,18,20,21,23,24],               // 穿搭 8
+      [25,26,27,28,30,32,34,36],               // 旅行 8
+      [37,38,39,40,41,42,43,44,45,46,47,48],  // 美妆护肤 12
+      [51,52,53,54,55,57,59,60,61,62],        // 家居 10
+      [63,64,65,66,67,68,69,71],              // 健身 8
+      [73,74,75,76,77,78,79,80],              // 其他 8
+      [4,7]                                      // 美食补 2 -> 共 65
+    ),
+    // 4 个专辑，每个都分了一部分（每个 4-7 条），剩下 40+ 条未归类
+    applied: {
+      categoryMap: {
+        '美食食谱': { match: ['食谱','美食','咖啡','早餐','三明治','空气炸锅','减脂餐','高蛋白','懒人','便当','饮品'], emoji: '🍜', bg: '#d6ffe5' },
+        '旅行攻略': { match: ['旅行','日本','京都','冲绳','大理','云南','贵州','小众','跳岛','清迈','泰国','巴厘岛','北海道'], emoji: '✈️', bg: '#ffd6dd' },
+        '穿搭灵感': { match: ['穿搭','奶油色','小个子','梨形','西装','叠穿','通勤','韩系','日系','法式','显瘦','OOTD','显高'], emoji: '👗', bg: '#fff4d6' },
+        '居家好物': { match: ['家居','改造','北欧','收纳','好物','出租屋','阳台','衣帽间','家装','定制','宜家','断舍离','绿植','香薰'], emoji: '🏠', bg: '#d6f0ff' },
+      },
+      assignment: {
+        // 美食食谱（5）
+        1:[{ name:'美食食谱', emoji:'🍜', bg:'#d6ffe5' }],
+        3:[{ name:'美食食谱', emoji:'🍜', bg:'#d6ffe5' }],
+        5:[{ name:'美食食谱', emoji:'🍜', bg:'#d6ffe5' }],
+        6:[{ name:'美食食谱', emoji:'🍜', bg:'#d6ffe5' }],
+        11:[{ name:'美食食谱', emoji:'🍜', bg:'#d6ffe5' }],
+        // 旅行攻略（4）
+        25:[{ name:'旅行攻略', emoji:'✈️', bg:'#ffd6dd' }],
+        26:[{ name:'旅行攻略', emoji:'✈️', bg:'#ffd6dd' }],
+        27:[{ name:'旅行攻略', emoji:'✈️', bg:'#ffd6dd' }],
+        28:[{ name:'旅行攻略', emoji:'✈️', bg:'#ffd6dd' }],
+        // 穿搭灵感（6）
+        13:[{ name:'穿搭灵感', emoji:'👗', bg:'#fff4d6' }],
+        14:[{ name:'穿搭灵感', emoji:'👗', bg:'#fff4d6' }],
+        17:[{ name:'穿搭灵感', emoji:'👗', bg:'#fff4d6' }],
+        18:[{ name:'穿搭灵感', emoji:'👗', bg:'#fff4d6' }],
+        20:[{ name:'穿搭灵感', emoji:'👗', bg:'#fff4d6' }],
+        21:[{ name:'穿搭灵感', emoji:'👗', bg:'#fff4d6' }],
+        // 居家好物（7）
+        51:[{ name:'居家好物', emoji:'🏠', bg:'#d6f0ff' }],
+        52:[{ name:'居家好物', emoji:'🏠', bg:'#d6f0ff' }],
+        53:[{ name:'居家好物', emoji:'🏠', bg:'#d6f0ff' }],
+        54:[{ name:'居家好物', emoji:'🏠', bg:'#d6f0ff' }],
+        55:[{ name:'居家好物', emoji:'🏠', bg:'#d6f0ff' }],
+        59:[{ name:'居家好物', emoji:'🏠', bg:'#d6f0ff' }],
+        61:[{ name:'居家好物', emoji:'🏠', bg:'#d6f0ff' }],
+      },
+    },
+  },
+  {
+    id: 'userD',
+    name: '小丁',
+    avatarBg: 'linear-gradient(135deg, #6ee7b7, #a7f3d0)',
+    initial: '丁',
+    // 68 条：综合
+    collectedIds: _ids(
+      [1,2,3,4,5,6,7,8,9,10,12],              // 美食 11
+      [13,14,15,16,18,19,21,22,23],           // 穿搭 9
+      [25,26,27,28,29,30,31,33,34,36],        // 旅行 10
+      [37,38,39,40,41,42,43,44,46,47,48,50], // 美妆护肤 12
+      [51,52,53,54,56,57,58,60,62],           // 家居 9
+      [63,64,65,66,67,68,69,70,71,72],       // 健身 10
+      [73,75,77,78,80],                         // 其他 5
+      [11,15]                                    // 补 2 -> 共 68
+    ),
+    // 全部归类完毕
+    applied: {
+      categoryMap: {
+        '美食食谱': { match: ['食谱','美食','咖啡','早餐','三明治','空气炸锅','减脂餐','高蛋白','懒人','便当','饮品','麻辣','港式','泡面','奶昔','低卡'], emoji: '🍜', bg: '#d6ffe5' },
+        '日本旅行': { match: ['日本','京都','冲绳','跳岛','北海道'], emoji: '🗾', bg: '#ffd6dd' },
+        '国内旅行': { match: ['大理','云南','贵州','小众','川西','稻城','自驾','青海','环湖','杭州','周末'], emoji: '🏔️', bg: '#ffd6e3' },
+        '东南亚旅行': { match: ['清迈','泰国','巴厘岛','马来西亚','潜水'], emoji: '🌴', bg: '#ffd6dd' },
+        '日常穿搭': { match: ['穿搭','奶油色','西装','叠穿','通勤','韩系','日系','法式','OOTD','约会','慵懒','复古','简约'], emoji: '👗', bg: '#fff4d6' },
+        '显瘦显高': { match: ['小个子','梨形','显瘦','微胖','显高'], emoji: '✨', bg: '#ffe8d6' },
+        '美妆化妆': { match: ['口红','美妆','试色','粉底液','底妆','眼影','化妆','唇釉','裸妆','修容','美瞳','淡妆','香水'], emoji: '💄', bg: '#ffe0d6' },
+        '护肤抗痘': { match: ['护肤','防晒','黑头','闭口','成分','敏感肌','换季','抗老','精华','油皮','控油','抗痘'], emoji: '🧴', bg: '#ffeae0' },
+        '家居改造': { match: ['家居','改造','北欧','出租屋','阳台','衣帽间','家装','定制','日式','侘寂','厨房','客厅','断舍离','loft','装修','绿植','香薰','宜家','收纳','好物','独居','咖啡角'], emoji: '🏠', bg: '#d6f0ff' },
+        '居家运动': { match: ['健身','减脂','翘臀','瑜伽','体态','跟练','居家','马甲线','腹肌','普拉提','蛋白质','HIIT','燃脂','冥想','放松'], emoji: '💪', bg: '#e2d6ff' },
+        '生活日常': { match: ['iPad','数码','学习','生产力','摄影','相机','猫','狗','萌宠','柯基','手帐','排版','文具','读书','笔记','考研','英语','效率','番茄钟'], emoji: '🌟', bg: '#ffe5d6' },
+      },
+      // 68 条全部归类
+      assignment: {
+        1:[{name:'美食食谱',emoji:'🍜',bg:'#d6ffe5'}], 2:[{name:'美食食谱',emoji:'🍜',bg:'#d6ffe5'}], 3:[{name:'美食食谱',emoji:'🍜',bg:'#d6ffe5'}], 4:[{name:'美食食谱',emoji:'🍜',bg:'#d6ffe5'}], 5:[{name:'美食食谱',emoji:'🍜',bg:'#d6ffe5'}], 6:[{name:'美食食谱',emoji:'🍜',bg:'#d6ffe5'}], 7:[{name:'美食食谱',emoji:'🍜',bg:'#d6ffe5'}], 8:[{name:'美食食谱',emoji:'🍜',bg:'#d6ffe5'}], 9:[{name:'美食食谱',emoji:'🍜',bg:'#d6ffe5'}], 10:[{name:'美食食谱',emoji:'🍜',bg:'#d6ffe5'}], 11:[{name:'美食食谱',emoji:'🍜',bg:'#d6ffe5'}], 12:[{name:'美食食谱',emoji:'🍜',bg:'#d6ffe5'}],
+        13:[{name:'日常穿搭',emoji:'👗',bg:'#fff4d6'}], 14:[{name:'显瘦显高',emoji:'✨',bg:'#ffe8d6'}], 15:[{name:'日常穿搭',emoji:'👗',bg:'#fff4d6'}], 16:[{name:'日常穿搭',emoji:'👗',bg:'#fff4d6'}], 18:[{name:'日常穿搭',emoji:'👗',bg:'#fff4d6'}], 19:[{name:'显瘦显高',emoji:'✨',bg:'#ffe8d6'}], 21:[{name:'显瘦显高',emoji:'✨',bg:'#ffe8d6'}], 22:[{name:'日常穿搭',emoji:'👗',bg:'#fff4d6'}], 23:[{name:'日常穿搭',emoji:'👗',bg:'#fff4d6'}],
+        25:[{name:'日本旅行',emoji:'🗾',bg:'#ffd6dd'}], 26:[{name:'日本旅行',emoji:'🗾',bg:'#ffd6dd'}], 27:[{name:'国内旅行',emoji:'🏔️',bg:'#ffd6e3'}], 28:[{name:'国内旅行',emoji:'🏔️',bg:'#ffd6e3'}], 29:[{name:'东南亚旅行',emoji:'🌴',bg:'#ffd6dd'}], 30:[{name:'东南亚旅行',emoji:'🌴',bg:'#ffd6dd'}], 31:[{name:'日本旅行',emoji:'🗾',bg:'#ffd6dd'}], 33:[{name:'国内旅行',emoji:'🏔️',bg:'#ffd6e3'}], 34:[{name:'国内旅行',emoji:'🏔️',bg:'#ffd6e3'}], 36:[{name:'国内旅行',emoji:'🏔️',bg:'#ffd6e3'}],
+        37:[{name:'美妆化妆',emoji:'💄',bg:'#ffe0d6'}], 38:[{name:'护肤抗痘',emoji:'🧴',bg:'#ffeae0'}], 39:[{name:'护肤抗痘',emoji:'🧴',bg:'#ffeae0'}], 40:[{name:'美妆化妆',emoji:'💄',bg:'#ffe0d6'}], 41:[{name:'美妆化妆',emoji:'💄',bg:'#ffe0d6'}], 42:[{name:'美妆化妆',emoji:'💄',bg:'#ffe0d6'}], 43:[{name:'护肤抗痘',emoji:'🧴',bg:'#ffeae0'}], 44:[{name:'护肤抗痘',emoji:'🧴',bg:'#ffeae0'}], 46:[{name:'美妆化妆',emoji:'💄',bg:'#ffe0d6'}], 47:[{name:'护肤抗痘',emoji:'🧴',bg:'#ffeae0'}], 48:[{name:'美妆化妆',emoji:'💄',bg:'#ffe0d6'}], 50:[{name:'护肤抗痘',emoji:'🧴',bg:'#ffeae0'}],
+        51:[{name:'家居改造',emoji:'🏠',bg:'#d6f0ff'}], 52:[{name:'家居改造',emoji:'🏠',bg:'#d6f0ff'}], 53:[{name:'家居改造',emoji:'🏠',bg:'#d6f0ff'}], 54:[{name:'家居改造',emoji:'🏠',bg:'#d6f0ff'}], 56:[{name:'家居改造',emoji:'🏠',bg:'#d6f0ff'}], 57:[{name:'家居改造',emoji:'🏠',bg:'#d6f0ff'}], 58:[{name:'家居改造',emoji:'🏠',bg:'#d6f0ff'}], 60:[{name:'家居改造',emoji:'🏠',bg:'#d6f0ff'}], 62:[{name:'家居改造',emoji:'🏠',bg:'#d6f0ff'}],
+        63:[{name:'居家运动',emoji:'💪',bg:'#e2d6ff'}], 64:[{name:'居家运动',emoji:'💪',bg:'#e2d6ff'}], 65:[{name:'居家运动',emoji:'💪',bg:'#e2d6ff'}], 66:[{name:'居家运动',emoji:'💪',bg:'#e2d6ff'}], 67:[{name:'居家运动',emoji:'💪',bg:'#e2d6ff'}], 68:[{name:'居家运动',emoji:'💪',bg:'#e2d6ff'}], 69:[{name:'居家运动',emoji:'💪',bg:'#e2d6ff'}], 70:[{name:'居家运动',emoji:'💪',bg:'#e2d6ff'}], 71:[{name:'居家运动',emoji:'💪',bg:'#e2d6ff'}], 72:[{name:'居家运动',emoji:'💪',bg:'#e2d6ff'}],
+        73:[{name:'生活日常',emoji:'🌟',bg:'#ffe5d6'}], 75:[{name:'生活日常',emoji:'🌟',bg:'#ffe5d6'}], 77:[{name:'生活日常',emoji:'🌟',bg:'#ffe5d6'}], 78:[{name:'生活日常',emoji:'🌟',bg:'#ffe5d6'}], 80:[{name:'生活日常',emoji:'🌟',bg:'#ffe5d6'}],
+      },
+    },
+  },
+];
+
+/* ============ 关键词映射 ============ */
+const synonymMap = {
+  '美食': ['食谱','美食','咖啡','早餐','三明治','空气炸锅','减脂餐','高蛋白','懒人'],
+  '吃的': ['食谱','美食','咖啡','早餐','三明治','空气炸锅','减脂餐','高蛋白','懒人'],
+  '食谱': ['食谱','美食','早餐','三明治','空气炸锅','减脂餐','高蛋白','懒人'],
+  '穿搭': ['穿搭','奶油色','小个子','梨形','西装','叠穿','通勤'],
+  '衣服': ['穿搭','奶油色','小个子','梨形','西装','叠穿','通勤'],
+  '服装': ['穿搭','奶油色','小个子','梨形','西装','叠穿','通勤'],
+  '时尚': ['穿搭','奶油色','西装','叠穿','通勤'],
+  '旅行': ['旅行','日本','京都','冲绳','大理','云南','贵州','小众','跳岛'],
+  '旅游': ['旅行','日本','京都','冲绳','大理','云南','贵州','小众','跳岛'],
+  '出行': ['旅行','日本','京都','冲绳','大理','云南','贵州','小众','跳岛'],
+  '美妆': ['口红','美妆','试色','粉底液','底妆','眼影','新手'],
+  '化妆': ['口红','美妆','试色','粉底液','底妆','眼影','新手'],
+  '彩妆': ['口红','美妆','试色','粉底液','底妆','眼影','新手'],
+  '护肤': ['护肤','防晒','黑头','闭口','成分'],
+  '护肤品': ['护肤','防晒','黑头','闭口','成分'],
+  '家居': ['家居','改造','北欧','收纳','好物','出租屋','阳台','衣帽间','家装','定制'],
+  '家装': ['家居','改造','北欧','收纳','出租屋','阳台','衣帽间','家装','定制'],
+  '装修': ['家装','定制','改造','北欧'],
+  '收纳': ['收纳','好物','整理'],
+  '健身': ['健身','减脂','翘臀','瑜伽','体态','跟练','健身餐'],
+  '运动': ['健身','减脂','翘臀','瑜伽','体态','跟练'],
+  '瑜伽': ['瑜伽','体态','居家'],
+  '减肥': ['减脂','减脂餐','健身','瑜伽','翘臀','健身餐'],
+};
+
+const styleMap = {
+  '美食':['🍜','#d6ffe5'],'吃的':['🍜','#d6ffe5'],'食谱':['🍜','#d6ffe5'],
+  '穿搭':['👗','#fff4d6'],'衣服':['👗','#fff4d6'],'服装':['👗','#fff4d6'],'时尚':['👗','#fff4d6'],
+  '旅行':['✈️','#ffd6dd'],'旅游':['✈️','#ffd6dd'],'出行':['✈️','#ffd6dd'],
+  '美妆':['💄','#ffe0d6'],'化妆':['💄','#ffe0d6'],'彩妆':['💄','#ffe0d6'],
+  '护肤':['🧴','#ffeae0'],'护肤品':['🧴','#ffeae0'],
+  '家居':['🏠','#d6f0ff'],'家装':['🏠','#d6f0ff'],'装修':['🏠','#d6f0ff'],'收纳':['📦','#d6e8ff'],
+  '健身':['💪','#e2d6ff'],'运动':['💪','#e2d6ff'],'瑜伽':['🧘','#ead6ff'],'减肥':['💪','#e2d6ff'],
+};
+
+const fallbackEmojis = ['📂','📁','📚','🗂️','📋','🏷️','⭐','💫'];
+const fallbackColors = ['#f0f0f0','#fff0e8','#e8f0ff','#f0e8ff','#fff8e0'];
+
+/* ============ 三种粒度的预设 ============
+   coarse(粗略): 6-8 个大类
+   balanced(平衡): 11-14 个中等
+   fine(细分): 18-22 个细粒度
+*/
+
+// 粗略：按大主题划分
+const aiCategoriesCoarse = {
+  '美食': { match: ['食谱','美食','咖啡','早餐','三明治','空气炸锅','减脂餐','高蛋白','懒人','便当','饮品','麻辣','港式','泡面','奶昔','低卡','晚餐','午餐'], emoji: '🍜', bg: '#d6ffe5' },
+  '穿搭': { match: ['穿搭','奶油色','小个子','梨形','西装','叠穿','通勤','韩系','日系','法式','OOTD','约会','慵懒','复古','简约','显瘦','显高','微胖','羽绒服','碎花裙'], emoji: '👗', bg: '#fff4d6' },
+  '旅行': { match: ['旅行','日本','京都','冲绳','大理','云南','贵州','小众','跳岛','清迈','泰国','巴厘岛','北海道','川西','稻城','自驾','青海','环湖','杭州','周末','土耳其','热气球','潜水','马来西亚'], emoji: '✈️', bg: '#ffd6dd' },
+  '美妆护肤': { match: ['口红','美妆','试色','粉底液','底妆','眼影','化妆','唇釉','裸妆','修容','美瞳','淡妆','香水','护肤','防晒','黑头','闭口','成分','敏感肌','换季','抗老','精华','油皮','控油','抗痘'], emoji: '💄', bg: '#ffe0d6' },
+  '家居': { match: ['家居','改造','北欧','收纳','好物','出租屋','阳台','衣帽间','家装','定制','日式','侘寂','厨房','客厅','断舍离','loft','装修','绿植','香薰','宜家','独居','咖啡角'], emoji: '🏠', bg: '#d6f0ff' },
+  '健身': { match: ['健身','减脂','翘臀','瑜伽','体态','跟练','居家','马甲线','腹肌','普拉提','蛋白质','HIIT','燃脂','冥想','放松'], emoji: '💪', bg: '#e2d6ff' },
+  '生活日常': { match: ['iPad','数码','学习','生产力','摄影','相机','猫','狗','萌宠','柯基','手帐','排版','文具','读书','笔记','考研','英语','效率','番茄钟'], emoji: '🌟', bg: '#ffe5d6' },
+};
+
+// 平衡：在大类下细分一层
+const aiCategoriesBalanced = {
+  '日常食谱': { match: ['食谱','美食','空气炸锅','便当','港式','泡面','晚餐','午餐','麻辣'], emoji: '🍜', bg: '#d6ffe5' },
+  '减脂饮食': { match: ['减脂','减脂餐','高蛋白','健身餐','低卡'], emoji: '🍱', bg: '#d6f5e0' },
+  '咖啡饮品': { match: ['咖啡','饮品','奶昔','早餐','三明治','懒人'], emoji: '☕', bg: '#e8f5d6' },
+  '日常穿搭': { match: ['穿搭','奶油色','西装','叠穿','通勤','韩系','日系','法式','OOTD','约会','慵懒','复古','简约','秋季穿搭','碎花裙','羽绒服'], emoji: '👗', bg: '#fff4d6' },
+  '显瘦显高': { match: ['小个子','梨形','显瘦','微胖','显高'], emoji: '✨', bg: '#ffe8d6' },
+  '日本旅行': { match: ['日本','京都','冲绳','跳岛','北海道'], emoji: '🗾', bg: '#ffd6dd' },
+  '国内旅行': { match: ['大理','云南','贵州','小众','川西','稻城','自驾','青海','环湖','杭州','周末','旅行'], emoji: '🏔️', bg: '#ffd6e3' },
+  '出境旅行': { match: ['清迈','泰国','巴厘岛','土耳其','热气球','马来西亚','潜水'], emoji: '🌴', bg: '#ffd6dd' },
+  '化妆美妆': { match: ['口红','美妆','试色','粉底液','底妆','眼影','化妆','唇釉','裸妆','修容','美瞳','淡妆','香水'], emoji: '💄', bg: '#ffe0d6' },
+  '护肤抗痘': { match: ['护肤','防晒','黑头','闭口','成分','敏感肌','换季','抗老','精华','油皮','控油','抗痘'], emoji: '🧴', bg: '#ffeae0' },
+  '家居改造': { match: ['家居','改造','北欧','出租屋','阳台','衣帽间','家装','定制','日式','侘寂','厨房','客厅','loft','装修','咖啡角','断舍离'], emoji: '🏠', bg: '#d6f0ff' },
+  '居家好物': { match: ['收纳','好物','绿植','香薰','宜家','独居'], emoji: '📦', bg: '#d6e8ff' },
+  '力量训练': { match: ['翘臀','健身','跟练','马甲线','腹肌','HIIT','燃脂','减脂'], emoji: '💪', bg: '#e2d6ff' },
+  '舒缓运动': { match: ['瑜伽','体态','普拉提','冥想','放松','居家'], emoji: '🧘', bg: '#ead6ff' },
+  '生活日常': { match: ['iPad','数码','学习','生产力','摄影','相机','猫','狗','萌宠','柯基','手帐','排版','文具','读书','笔记','考研','英语','效率','番茄钟','蛋白质'], emoji: '🌟', bg: '#ffe5d6' },
+};
+
+// 细分：更窄的小主题
+const aiCategoriesFine = {
+  '减脂晚餐': { match: ['减脂','晚餐','减脂餐','低卡','健身餐'], emoji: '🥗', bg: '#d6ffe5' },
+  '高蛋白食谱': { match: ['高蛋白','蛋白质'], emoji: '🥩', bg: '#d6f5e0' },
+  '快手厨房': { match: ['空气炸锅','懒人','食谱','泡面','三明治','早餐'], emoji: '🍳', bg: '#fff0d6' },
+  '便当料理': { match: ['便当','午餐','日式'], emoji: '🍱', bg: '#fff4d6' },
+  '咖啡手冲': { match: ['咖啡','手冲','饮品'], emoji: '☕', bg: '#e8d6ff' },
+  '元气饮品': { match: ['奶昔','饮品','低卡'], emoji: '🥤', bg: '#d6f0ff' },
+  '风味菜系': { match: ['麻辣','港式','复刻'], emoji: '🌶️', bg: '#ffe0d6' },
+  '秋冬穿搭': { match: ['秋季穿搭','奶油色','羽绒服','冬季'], emoji: '🍂', bg: '#fff4d6' },
+  '通勤穿搭': { match: ['通勤','西装','叠穿','OOTD','约会'], emoji: '👔', bg: '#fff8d6' },
+  '日系慵懒': { match: ['日系','韩系','慵懒','简约'], emoji: '👚', bg: '#fff0e0' },
+  '法式复古': { match: ['法式','复古','碎花裙'], emoji: '👗', bg: '#ffd6dd' },
+  '显瘦技巧': { match: ['小个子','梨形','显瘦','微胖','显高'], emoji: '✨', bg: '#ffe8d6' },
+  '日本旅行': { match: ['日本','京都','冲绳','跳岛','北海道'], emoji: '🗾', bg: '#ffd6dd' },
+  '国内小众': { match: ['大理','云南','贵州','小众','川西','稻城','青海','环湖'], emoji: '🌄', bg: '#ffd6e3' },
+  '自驾路线': { match: ['自驾','环湖','川西'], emoji: '🚗', bg: '#ffe0e8' },
+  '周末出游': { match: ['周末','杭州','旅行'], emoji: '🍵', bg: '#ffe8e8' },
+  '东南亚': { match: ['清迈','泰国','巴厘岛','马来西亚','潜水'], emoji: '🌴', bg: '#ffd6dd' },
+  '欧亚远途': { match: ['土耳其','热气球'], emoji: '🎈', bg: '#ffe0d6' },
+  '唇妆推荐': { match: ['口红','试色','唇釉'], emoji: '💋', bg: '#ffe0d6' },
+  '眼妆教程': { match: ['眼影','美瞳'], emoji: '👁️', bg: '#ffe5d6' },
+  '底妆测评': { match: ['粉底液','底妆','修容'], emoji: '💅', bg: '#ffeed6' },
+  '日常淡妆': { match: ['淡妆','裸妆','化妆'], emoji: '💄', bg: '#ffd6dd' },
+  '香水分享': { match: ['香水'], emoji: '🌹', bg: '#ffd6e0' },
+  '抗痘成分': { match: ['抗痘','黑头','闭口','成分'], emoji: '🌿', bg: '#d6ffe5' },
+  '防晒测评': { match: ['防晒'], emoji: '☀️', bg: '#fff0d6' },
+  '油皮控油': { match: ['油皮','控油'], emoji: '🧴', bg: '#ffeae0' },
+  '抗老精华': { match: ['抗老','精华'], emoji: '💎', bg: '#ffe0d6' },
+  '换季护肤': { match: ['敏感肌','换季','护肤'], emoji: '🌸', bg: '#ffeae0' },
+  '出租屋改造': { match: ['出租屋','改造','阳台','咖啡角','独居'], emoji: '🛋️', bg: '#d6f0ff' },
+  '收纳整理': { match: ['收纳','好物','断舍离'], emoji: '📦', bg: '#d6e8ff' },
+  '家装定制': { match: ['衣帽间','家装','定制','北欧','装修','loft','侘寂'], emoji: '🏡', bg: '#d6eeff' },
+  '厨房客厅': { match: ['厨房','客厅'], emoji: '🍴', bg: '#d6f0ff' },
+  '绿植香薰': { match: ['绿植','香薰'], emoji: '🪴', bg: '#d6ffe5' },
+  '力量训练': { match: ['翘臀','健身','跟练','减脂','腹肌','马甲线'], emoji: '💪', bg: '#e2d6ff' },
+  '燃脂HIIT': { match: ['HIIT','燃脂'], emoji: '🔥', bg: '#ffe0d6' },
+  '瑜伽普拉提': { match: ['瑜伽','普拉提','体态'], emoji: '🧘', bg: '#ead6ff' },
+  '冥想放松': { match: ['冥想','放松'], emoji: '🧘‍♀️', bg: '#ead6ff' },
+  '数码生产力': { match: ['iPad','数码','生产力','摄影','相机'], emoji: '💻', bg: '#d6e8ff' },
+  '萌宠日常': { match: ['猫','狗','萌宠','柯基'], emoji: '🐱', bg: '#ffe8d6' },
+  '学习方法': { match: ['学习','读书','笔记','考研','英语','效率','番茄钟','手帐','文具','排版'], emoji: '📚', bg: '#e8d6ff' },
+};
+
+const granularityPresets = {
+  coarse: { name: '粗略', map: aiCategoriesCoarse, range: '约 5-8 个专辑', icon: '📁' },
+  balanced: { name: '平衡', map: aiCategoriesBalanced, range: '约 10-14 个专辑', icon: '📂' },
+  fine: { name: '细分', map: aiCategoriesFine, range: '约 15-22 个专辑', icon: '🗂️' },
+};
+
+// 兼容旧代码引用
+const aiAutoCategories = aiCategoriesBalanced;
+
+/* ============ 分类核心 ============ */
+function runClassify(categoryMap, multi = false, onlyNoteIds = null) {
+  const result = {};
+  const assignment = {};
+  Object.keys(categoryMap).forEach(c => result[c] = []);
+
+  const targetNotes = onlyNoteIds ? notes.filter(n => onlyNoteIds.includes(n.id)) : notes;
+
+  targetNotes.forEach(note => {
+    const scores = Object.entries(categoryMap).map(([cat, rule]) => {
+      const score = (note.tags || []).filter(t =>
+        (rule.match || []).some(m => t.includes(m) || m.includes(t))
+      ).length;
+      return { cat, score };
+    }).filter(s => s.score > 0);
+
+    if (scores.length === 0) return;
+    scores.sort((a, b) => b.score - a.score);
+
+    if (multi) {
+      const threshold = Math.max(1, scores[0].score - 1);
+      const winners = scores.filter(s => s.score >= threshold).slice(0, 3);
+      winners.forEach(w => {
+        result[w.cat].push(note);
+        if (!assignment[note.id]) assignment[note.id] = [];
+        assignment[note.id].push({
+          name: w.cat,
+          emoji: categoryMap[w.cat].emoji,
+          bg: categoryMap[w.cat].bg,
+        });
+      });
+    } else {
+      const w = scores[0];
+      result[w.cat].push(note);
+      assignment[note.id] = [{
+        name: w.cat,
+        emoji: categoryMap[w.cat].emoji,
+        bg: categoryMap[w.cat].bg,
+      }];
+    }
+  });
+
+  return { result, assignment };
+}
+
+function expandUserCategories(categoryNames) {
+  const map = {};
+  categoryNames.forEach((name, i) => {
+    const trimmed = name.trim();
+    const match = synonymMap[trimmed];
+    const style = styleMap[trimmed];
+    map[trimmed] = {
+      match: match || [trimmed],
+      emoji: style ? style[0] : fallbackEmojis[i % fallbackEmojis.length],
+      bg: style ? style[1] : fallbackColors[i % fallbackColors.length],
+    };
+  });
+  return map;
+}
+
+// 预估某粒度对当前用户笔记的分类效果
+function previewGranularity(map) {
+  const counts = {};
+  Object.keys(map).forEach(c => counts[c] = 0);
+  notes.forEach(note => {
+    const scores = Object.entries(map).map(([cat, rule]) => ({
+      cat,
+      score: note.tags.filter(t =>
+        rule.match.some(m => t.includes(m) || m.includes(t))
+      ).length,
+    })).filter(s => s.score > 0);
+    if (scores.length === 0) return;
+    scores.sort((a, b) => b.score - a.score);
+    counts[scores[0].cat]++;
+  });
+  // 非空专辑数
+  const nonEmpty = Object.entries(counts).filter(([_, n]) => n > 0);
+  // 按笔记数从多到少取前 3 个作示例
+  nonEmpty.sort((a, b) => b[1] - a[1]);
+  const examples = nonEmpty.slice(0, 3).map(([cat]) => ({
+    name: cat,
+    emoji: map[cat].emoji,
+  }));
+  return {
+    count: nonEmpty.length,
+    examples,
+  };
+}
+
+function generateSuggestions(uncoveredNotes) {
+  if (uncoveredNotes.length === 0) return [];
+  const candidates = Object.entries(aiAutoCategories).map(([cat, rule]) => {
+    const covered = uncoveredNotes.filter(n =>
+      n.tags.some(t => rule.match.some(m => t.includes(m) || m.includes(t)))
+    );
+    return { cat, rule, count: covered.length };
+  }).filter(c => c.count >= 2);
+
+  candidates.sort((a, b) => b.count - a.count);
+
+  const picked = [];
+  const seenNotes = new Set();
+  for (const c of candidates) {
+    const covered = uncoveredNotes.filter(n =>
+      n.tags.some(t => c.rule.match.some(m => t.includes(m) || m.includes(t)))
+    );
+    const newCoverage = covered.filter(n => !seenNotes.has(n.id));
+    if (newCoverage.length >= 2) {
+      picked.push({ ...c, newCoverage: newCoverage.length });
+      newCoverage.forEach(n => seenNotes.add(n.id));
+    }
+    if (picked.length >= 4) break;
+  }
+  return picked;
+}
+
+/* ============ 全局状态 ============ */
+let state = {
+  currentUserId: 'userA',
+  phoneTab: 'all',           // 'all' | 'album' | 'album-detail'
+  albumDetailCat: null,      // 进入专辑详情时记录类目名
+  // 配置阶段
+  mode: null,                // 'manual' | 'auto'
+  granularity: null,         // 'coarse' | 'balanced' | 'fine'（仅 auto 模式）
+  strategy: null,            // 'replace' | 'incremental' | null（新用户或确定不需要询问）
+  userCategories: [],        // 增量模式下，原有类目以 chip 形式锁定显示
+  multi: false,
+  // 处理
+  classifying: false,
+  // 结果（pending 状态，尚未应用到 applied）
+  pending: null,             // { categoryMap, result, assignment, mode, multi, strategy, diff }
+  suggestions: [],
+  adoptedSuggestions: new Set(),
+  suggestionsDismissed: false,
+  mergingFrom: null,
+  appliedFlash: false,       // 刚应用后的高亮提示
+};
+
+function currentUser() {
+  return users.find(u => u.id === state.currentUserId);
+}
+
+function hasExistingClassification() {
+  return Object.keys(currentUser().applied.categoryMap).length > 0;
+}
+
+/* ============ 渲染：用户切换条 ============ */
+function renderUserSwitcher() {
+  document.getElementById('user-switcher').innerHTML = `
+    <span class="switcher-label">👤 模拟用户：</span>
+    <div class="user-tabs">
+      ${users.map(u => `
+        <div class="user-tab ${u.id === state.currentUserId ? 'active' : ''}"
+             onclick="switchUser('${u.id}')">
+          <div class="user-avatar" style="background:${u.avatarBg};">${u.initial}</div>
+          <div class="user-info">
+            <div class="user-name">${u.name}</div>
+            <div class="user-desc">${buildUserLabel(u)}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// 用户标签：已分类 xx/xx 篇 · xx 个专辑
+function buildUserLabel(u) {
+  const total = u.collectedIds.length;
+  const classified = Object.keys(u.applied.assignment).length;
+  const albumCount = Object.keys(u.applied.categoryMap).length;
+  return `已分类 ${classified}/${total} 篇 · ${albumCount} 个专辑`;
+}
+
+function switchUser(uid) {
+  if (state.currentUserId === uid) return;
+  if (state.pending) {
+    if (!confirm('当前有未应用的分类草稿，切换用户会丢弃，确定继续吗？')) return;
+  }
+  state.currentUserId = uid;
+  rebuildCurrentNotes();
+  resetWorkflowState();
+  renderAll();
+}
+
+function resetWorkflowState() {
+  state.mode = null;
+  state.granularity = null;
+  state.strategy = null;
+  state.userCategories = [];
+  state.multi = false;
+  state.classifying = false;
+  state.pending = null;
+  state.suggestions = [];
+  state.adoptedSuggestions = new Set();
+  state.suggestionsDismissed = false;
+  state.mergingFrom = null;
+  state.appliedFlash = false;
+  // 切换用户/重置工作流时也回到「全部」
+  state.phoneTab = 'all';
+  state.albumDetailCat = null;
+}
+
+function switchPhoneTab(tab) {
+  state.phoneTab = tab;
+  state.albumDetailCat = null;
+  renderAll();
+}
+
+function openAlbumDetail(cat) {
+  state.albumDetailCat = cat;
+  state.phoneTab = 'album-detail';
+  renderAll();
+}
+
+function backToAlbumList() {
+  state.albumDetailCat = null;
+  state.phoneTab = 'album';
+  renderAll();
+}
+
+/* ============ 渲染：手机端瀑布流 ============ */
+
+
+function renderPhoneBanner() {
+  // 只在「全部」Tab 显示 banner，专辑页不显示
+  const area = document.getElementById('phone-banner-area');
+  if (state.phoneTab !== 'all') { area.innerHTML = ''; return; }
+
+  area.innerHTML = `
+    <div class="phone-banner ai-entry" onclick="scrollPanel()">
+      <div class="banner-tag">✨ 智能分类</div>
+      <div class="banner-title">AI 帮你整理收藏</div>
+      <div class="banner-arrow">›</div>
+    </div>
+  `;
+}
+
+function renderWaterfall() {
+  // 同步 Tab 的 active 状态、专辑数量
+  syncTabsState();
+
+  // 根据当前 phoneTab 决定渲染什么
+  if (state.phoneTab === 'album') { renderAlbumList(); return; }
+  if (state.phoneTab === 'album-detail') { renderAlbumDetail(); return; }
+
+  // 默认：全部 — 瀑布流
+  const u = currentUser();
+  const applied = u.applied.assignment;
+  const pending = state.pending?.assignment || {};
+  const isPendingMode = !!state.pending;
+
+  const container = document.getElementById('waterfall');
+  container.className = 'waterfall';
+  container.innerHTML = notes.map(n => {
+    let badges = '';
+    let pendingTag = '';
+
+    if (isPendingMode) {
+      const pendingCats = pending[n.id] || [];
+      const appliedCats = applied[n.id] || [];
+
+      if (pendingCats.length > 0) {
+        badges = pendingCats.slice(0, 3).map(c => {
+          const isKept = appliedCats.find(ac => ac.name === c.name);
+          const cls = isKept ? 'kept' : 'new';
+          return `<div class="category-badge pending ${cls}">${c.emoji} ${c.name}</div>`;
+        }).join('');
+        pendingTag = '<div class="pending-overlay-tag">待确认</div>';
+      } else if (appliedCats.length > 0) {
+        badges = appliedCats.slice(0, 3).map(c =>
+          `<div class="category-badge">${c.emoji} ${c.name}</div>`
+        ).join('');
+      }
+    } else {
+      const cats = applied[n.id] || [];
+      badges = cats.slice(0, 3).map(c =>
+        `<div class="category-badge">${c.emoji} ${c.name}</div>`
+      ).join('');
+    }
+
+    return `
+      <div class="note-card">
+        <div class="note-cover" style="--ar:${n.ar}; --cover-bg:${n.bg};">
+          ${badges ? `<div class="badge-stack">${badges}</div>` : ''}
+          ${pendingTag}
+          <div class="emoji">${n.emoji}</div>
+        </div>
+        <div class="note-info">
+          <div class="note-title">${n.title}</div>
+          <div class="note-meta">
+            <div class="note-author"><div class="avatar-mini"></div>${n.author}</div>
+            <div class="like">❤ ${n.likes}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function syncTabsState() {
+  const u = currentUser();
+  const catCount = Object.keys(u.applied.categoryMap).length;
+  const tabAll = document.getElementById('tab-all');
+  const tabAlbum = document.getElementById('tab-album');
+  const albumCount = document.getElementById('album-count');
+  const allCount = document.getElementById('all-count');
+  if (tabAll && tabAlbum) {
+    const inAlbum = state.phoneTab === 'album' || state.phoneTab === 'album-detail';
+    tabAll.classList.toggle('active', !inAlbum);
+    tabAlbum.classList.toggle('active', inAlbum);
+  }
+  if (albumCount) {
+    albumCount.textContent = catCount > 0 ? `(${catCount})` : '';
+  }
+  if (allCount) {
+    allCount.textContent = `(${notes.length})`;
+  }
+}
+
+/* ============ 专辑视图 ============ */
+function renderAlbumList() {
+  const u = currentUser();
+  const applied = u.applied;
+  const cats = Object.keys(applied.categoryMap);
+
+  const container = document.getElementById('waterfall');
+  container.className = 'album-list';
+
+  // 没有任何分类：空状态
+  if (cats.length === 0) {
+    container.innerHTML = `
+      <div class="album-empty">
+        <div class="album-empty-icon">📂</div>
+        <div class="album-empty-title">还没有专辑</div>
+        <div class="album-empty-desc">用 AI 一键分类你的收藏</div>
+        <div class="album-empty-btn" onclick="switchPhoneTab('all'); scrollPanel();">去整理收藏</div>
+      </div>
+    `;
+    return;
+  }
+
+  // 收集每个类目下的笔记
+  const catNotes = {};
+  cats.forEach(c => catNotes[c] = []);
+  Object.entries(applied.assignment).forEach(([nid, arr]) => {
+    const note = notes.find(n => n.id == nid);
+    if (!note) return;
+    arr.forEach(c => {
+      if (catNotes[c.name]) catNotes[c.name].push(note);
+    });
+  });
+
+  // 按笔记数从多到少排序
+  const sortedCats = cats.sort((a, b) => catNotes[b].length - catNotes[a].length);
+
+  container.innerHTML = sortedCats.map(cat => {
+    const rule = applied.categoryMap[cat];
+    const ns = catNotes[cat];
+    const total = ns.length;
+    // 取前 4 张做封面拼图
+    const covers = ns.slice(0, 4);
+
+    return `
+      <div class="album-card" onclick="openAlbumDetail('${escapeAttr(cat)}')">
+        <div class="album-cover" style="background:${rule.bg};">
+          ${covers.length > 0 ? `
+            <div class="album-grid grid-${Math.min(covers.length, 4)}">
+              ${covers.map(n => `
+                <div class="album-grid-cell" style="background:${n.bg};">
+                  <span>${n.emoji}</span>
+                </div>
+              `).join('')}
+              ${total > 4 ? `<div class="album-more">+${total - 4}</div>` : ''}
+            </div>
+          ` : `<div style="font-size:48px;">${rule.emoji}</div>`}
+        </div>
+        <div class="album-info">
+          <div class="album-name">
+            <span>${rule.emoji}</span>
+            <span>${cat}</span>
+          </div>
+          <div class="album-count">${total} 篇</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderAlbumDetail() {
+  const u = currentUser();
+  const cat = state.albumDetailCat;
+  const rule = u.applied.categoryMap[cat];
+  if (!rule) {
+    // 类目已不存在（被删除/合并），回到列表
+    backToAlbumList();
+    return;
+  }
+
+  // 收集这个类目下的笔记
+  const ns = [];
+  Object.entries(u.applied.assignment).forEach(([nid, arr]) => {
+    if (arr.find(c => c.name === cat)) {
+      const note = notes.find(n => n.id == nid);
+      if (note) ns.push(note);
+    }
+  });
+
+  const container = document.getElementById('waterfall');
+  container.className = 'album-detail';
+  container.innerHTML = `
+    <div class="album-detail-head" style="background:${rule.bg};">
+      <div class="album-detail-back" onclick="backToAlbumList()">‹ 返回专辑</div>
+      <div class="album-detail-title">
+        <span style="font-size:32px;">${rule.emoji}</span>
+        <div>
+          <div class="adt-name">${cat}</div>
+          <div class="adt-count">${ns.length} 篇笔记</div>
+        </div>
+      </div>
+    </div>
+    <div class="waterfall" style="padding-top:8px;">
+      ${ns.map(n => `
+        <div class="note-card">
+          <div class="note-cover" style="--ar:${n.ar}; --cover-bg:${n.bg};">
+            <div class="emoji">${n.emoji}</div>
+          </div>
+          <div class="note-info">
+            <div class="note-title">${n.title}</div>
+            <div class="note-meta">
+              <div class="note-author"><div class="avatar-mini"></div>${n.author}</div>
+              <div class="like">❤ ${n.likes}</div>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+/* ============ 渲染：右侧控制面板 ============ */
+function renderPanel() {
+  if (state.pending) { renderPendingResults(); return; }
+  if (state.classifying) { renderProcessing(); return; }
+
+  // 已有分类的用户：先问策略
+  if (hasExistingClassification() && !state.strategy) {
+    renderPreAsk();
+    return;
+  }
+
+  renderSetup();
+}
+
+function renderPreAsk() {
+  const u = currentUser();
+  const catCount = Object.keys(u.applied.categoryMap).length;
+  const noteCount = Object.keys(u.applied.assignment).length;
+
+  document.getElementById('panel').innerHTML = `
+    <div class="panel-title"><span class="dot"></span>AI 智能分类</div>
+    <div class="panel-sub">${u.name} · ${catCount} 个专辑 · ${noteCount} 篇已分类</div>
+
+    <div class="pre-ask">
+      <div class="pre-ask-title">你已经有一些专辑了</div>
+      <div class="pre-ask-desc">
+        这次想怎么整理？
+      </div>
+      <div class="pre-ask-options">
+        <div class="pre-ask-card" onclick="chooseStrategy('incremental')">
+          <div class="pa-icon">➕</div>
+          <div class="pa-title">在已有基础上整理</div>
+          <div class="pa-desc">保留原有专辑，处理未归类笔记</div>
+        </div>
+        <div class="pre-ask-card" onclick="chooseStrategy('replace')">
+          <div class="pa-icon">🔄</div>
+          <div class="pa-title">从头重新分类</div>
+          <div class="pa-desc">忽略原有，全部重新整理</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function chooseStrategy(s) {
+  state.strategy = s;
+  if (s === 'incremental') {
+    // 把已有类目预填入 userCategories（用于手动模式）
+    state.userCategories = Object.keys(currentUser().applied.categoryMap);
+  } else {
+    state.userCategories = [];
+  }
+  renderPanel();
+}
+
+function renderSetup() {
+  const u = currentUser();
+  const isIncremental = state.strategy === 'incremental';
+  const existingCats = Object.keys(u.applied.categoryMap);
+
+  document.getElementById('panel').innerHTML = `
+    <div class="panel-title">
+      <span class="dot"></span>
+      ${isIncremental ? '继续完善分类' : (hasExistingClassification() ? '重新分类' : 'AI 智能分类')}
+    </div>
+    <div class="panel-sub">
+      ${isIncremental
+        ? `处理剩余 ${notes.length - Object.keys(u.applied.assignment).length} 篇未归类笔记`
+        : `整理你的 ${notes.length} 条收藏`}
+      ${hasExistingClassification() ? `<span style="color:var(--xhs-red);font-size:12px;cursor:pointer;margin-left:8px;" onclick="resetStrategy()">‹ 重选方式</span>` : ''}
+    </div>
+
+    <div class="section">
+      <div class="section-label">选择分类方式</div>
+      <div class="workflow-cards">
+        <div class="workflow-card ${state.mode==='manual'?'active':''}" onclick="setMode('manual')">
+          <div class="wf-icon">✍️</div>
+          <div class="wf-title">我来定专辑</div>
+          <div class="wf-desc">${isIncremental ? '补充已有专辑' : '自己定专辑名，AI 帮你归类'}</div>
+        </div>
+        <div class="workflow-card ${state.mode==='auto'?'active':''}" onclick="setMode('auto')">
+          <div class="wf-icon">🪄</div>
+          <div class="wf-title">AI 自动归类</div>
+          <div class="wf-desc">${isIncremental ? '保留已有专辑继续归类' : 'AI 自动生成专辑'}</div>
+        </div>
+      </div>
+    </div>
+
+    ${state.mode === 'manual' ? renderManualInput(isIncremental, existingCats) : ''}
+    ${state.mode === 'auto' ? renderAutoIntro(isIncremental, existingCats) : ''}
+    ${state.mode === 'auto' ? renderGranularityPicker(isIncremental) : ''}
+
+    ${state.mode && (state.mode === 'manual' || state.granularity) ? `
+      <div class="multi-toggle">
+        <div>
+          <div class="label">一篇笔记可属于多个专辑</div>
+          <div class="desc">比如「减脂晚餐」可同时进「美食」和「健身」</div>
+        </div>
+        <div class="switch ${state.multi ? 'on' : ''}" onclick="toggleMulti()"></div>
+      </div>
+    ` : ''}
+
+    <button class="start-btn"
+      ${(!state.mode
+         || (state.mode==='manual' && state.userCategories.length===0)
+         || (state.mode==='auto' && !state.granularity)
+        ) ? 'disabled' : ''}
+      onclick="startClassify()">
+      ${state.mode === 'auto' ? '🪄' : '✨'} 生成草稿
+    </button>
+    <div style="text-align:center; font-size:11px; color:var(--ink-faint); margin-top:8px;">
+      草稿可预览编辑，确认后再应用
+    </div>
+  `;
+}
+
+function renderGranularityPicker(isIncremental) {
+  const granOptions = ['coarse', 'balanced', 'fine'];
+
+  return `
+    <div class="section">
+      <div class="section-label">
+        选择分类粒度
+      </div>
+      <div class="granularity-cards">
+        ${granOptions.map(key => {
+          const opt = granularityPresets[key];
+          const preview = previewGranularity(opt.map);
+          const isActive = state.granularity === key;
+          return `
+            <div class="granularity-card ${isActive ? 'active' : ''}" onclick="setGranularity('${key}')">
+              <div class="gc-head">
+                <span class="gc-icon">${opt.icon}</span>
+                <span class="gc-name">${opt.name}</span>
+                <span class="gc-count">≈ ${preview.count} 个</span>
+              </div>
+              <div class="gc-examples">
+                ${preview.examples.length > 0
+                  ? preview.examples.slice(0, 2).map(e => `<span class="gc-chip">${e.emoji} ${e.name}</span>`).join('')
+                  : '<span class="gc-empty">—</span>'}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderManualInput(isIncremental, existingCats) {
+  return `
+    <div class="section">
+      <div class="section-label">
+        ${isIncremental ? '专辑（原有 + 新增）' : '我想要的专辑'}
+        <span class="hint">${state.userCategories.length} 个</span>
+      </div>
+      ${isIncremental && existingCats.length > 0 ? `
+        <div class="existing-cats-hint">
+          蓝色 chip 是已有的专辑（不可删），可继续添加。
+        </div>
+      ` : ''}
+      <div class="category-input-wrap">
+        <input class="category-input" id="cat-input"
+          placeholder="例如：美食、穿搭、旅行..."
+          onkeydown="if(event.key==='Enter') addCategory()">
+        <button class="add-btn" onclick="addCategory()">添加</button>
+      </div>
+      <div class="category-chips">
+        ${state.userCategories.map((c, i) => {
+          const isExisting = isIncremental && existingCats.includes(c);
+          return `
+            <div class="chip ${isExisting ? 'existing' : ''}">
+              ${isExisting ? '<span class="lock">🔒</span>' : ''}
+              ${c}
+              ${!isExisting ? `<span class="remove" onclick="removeCategory(${i})">×</span>` : ''}
+            </div>
+          `;
+        }).join('')}
+      </div>
+      <div class="preset-row">
+        <span style="font-size:12px;color:var(--ink-faint);margin-right:4px;">快速添加:</span>
+        ${['美食','穿搭','旅行','美妆','护肤','家居','健身'].map(p =>
+          state.userCategories.includes(p) ? '' :
+          `<span class="preset-chip" onclick="quickAdd('${p}')">+ ${p}</span>`
+        ).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderAutoIntro(isIncremental, existingCats) {
+  if (isIncremental) {
+    return `
+      <div class="section">
+        <div style="background:linear-gradient(135deg, #fff4f5, #ffe8ec); border-radius:12px; padding:16px;">
+          <div style="font-size:13px; color:var(--ink); line-height:1.7;">
+            🪄 保留你已有的 <b>${existingCats.length}</b> 个专辑：<br>
+            <span style="color:var(--ink-soft);font-size:12px;">${existingCats.slice(0,6).join(' · ')}${existingCats.length > 6 ? ' ...' : ''}</span><br>
+            把未归类笔记归入其中，必要时再新增。
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  return `
+    <div class="section">
+      <div style="background:linear-gradient(135deg, #fff4f5, #ffe8ec); border-radius:12px; padding:16px;">
+        <div style="font-size:13px; color:var(--ink); line-height:1.7;">
+          🪄 AI 会通读你的 ${notes.length} 篇收藏，自动生成专辑。
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderProcessing() {
+  document.getElementById('panel').innerHTML = `
+    <div class="panel-title"><span class="dot"></span>生成草稿中</div>
+    <div class="panel-sub">${state.mode === 'auto' ? 'AI 分析中...' : '归类中...'}</div>
+    <div class="processing">
+      <div class="spinner"></div>
+      <div class="status-text" id="status-text">分析中...</div>
+      <div class="current-note" id="current-note"></div>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+  `;
+}
+
+function renderPendingResults() {
+  const { result, categoryMap, mode, multi, strategy, diff } = state.pending;
+  const u = currentUser();
+  const existingCatNames = Object.keys(u.applied.categoryMap);
+
+  const cats = Object.keys(result)
+    .filter(c => result[c].length > 0)
+    .sort((a, b) => {
+      if (a === '其他') return 1;
+      if (b === '其他') return -1;
+      return result[b].length - result[a].length;
+    });
+
+  let crossCatCount = 0;
+  if (multi) {
+    const counts = {};
+    Object.values(result).forEach(arr => arr.forEach(n => counts[n.id] = (counts[n.id] || 0) + 1));
+    crossCatCount = Object.values(counts).filter(c => c > 1).length;
+  }
+
+  document.getElementById('panel').innerHTML = `
+    <div class="confirm-bar">
+      <div class="confirm-title">⏳ 分类草稿，尚未应用</div>
+      <div class="confirm-desc">应用后才会修改你的收藏夹。</div>
+      <div class="diff-stats">
+        <div class="diff-stat new"><span class="num">+${diff.newAssigned}</span><span>新归类</span></div>
+        ${diff.changed > 0 ? `<div class="diff-stat change"><span class="num">~${diff.changed}</span><span>分类变更</span></div>` : ''}
+        ${diff.kept > 0 ? `<div class="diff-stat keep"><span class="num">${diff.kept}</span><span>保持不变</span></div>` : ''}
+        ${diff.removed > 0 ? `<div class="diff-stat change"><span class="num">-${diff.removed}</span><span>移除归类</span></div>` : ''}
+        ${state.pending.unclassified?.length > 0 ? `<div class="diff-stat unclassified"><span class="num">${state.pending.unclassified.length}</span><span>未归类</span></div>` : ''}
+      </div>
+      <div class="confirm-actions">
+        <button class="btn-apply" onclick="applyToCollection()">✓ 应用到我的收藏夹</button>
+        <button class="btn-discard" onclick="discardPending()">放弃草稿</button>
+      </div>
+    </div>
+
+    <div class="results-header">
+      <div>
+        <div class="results-summary">
+          ${cats.length} 个专辑${mode === 'auto' ? ' · AI 生成' : ''}${multi && crossCatCount > 0 ? `<span style="color:var(--xhs-red);"> · ${crossCatCount} 篇多专辑</span>` : ''}
+        </div>
+      </div>
+    </div>
+
+    ${state.mergingFrom ? `
+      <div class="merge-hint">
+        <span>点击要合并到的专辑（源：「${state.mergingFrom}」）</span>
+        <span class="cancel" onclick="cancelMerge()">取消</span>
+      </div>
+    ` : ''}
+
+    ${renderSuggestions()}
+
+    <div>
+      ${cats.map((cat, idx) => {
+        const rule = categoryMap[cat];
+        const isMergeSource = state.mergingFrom === cat;
+        const isExisting = existingCatNames.includes(cat);
+        const isNew = !isExisting && hasExistingClassification();
+        return `
+        <div class="category-result ${idx < 3 ? 'open' : ''} ${isMergeSource ? 'merging' : ''} ${isNew ? 'new-cat' : ''}"
+             data-cat="${escapeAttr(cat)}">
+          <div class="category-head" style="--cat-bg:${rule.bg};" onclick="onCategoryHeadClick(event, '${escapeAttr(cat)}')">
+            <div class="left">
+              <span class="cat-emoji">${rule.emoji}</span>
+              <span class="cat-name" data-cat="${escapeAttr(cat)}"
+                    onclick="event.stopPropagation()"
+                    ondblclick="startRename(this, '${escapeAttr(cat)}')">${cat}</span>
+              ${isNew ? '<span class="cat-tag new">新增</span>' : ''}
+              ${isExisting ? '<span class="cat-tag existing">原有</span>' : ''}
+              <span class="cat-count">${result[cat].length}</span>
+            </div>
+            <div class="cat-actions" onclick="event.stopPropagation()">
+              <div class="cat-action" title="重命名"
+                   onclick="startRename(this.closest('.category-head').querySelector('.cat-name'), '${escapeAttr(cat)}')">✎</div>
+              <div class="cat-action" title="合并到其他专辑"
+                   onclick="startMerge('${escapeAttr(cat)}')">⇄</div>
+              <div class="cat-action danger" title="删除专辑"
+                   onclick="deleteCategory('${escapeAttr(cat)}')">🗑</div>
+              <span class="toggle-icon">›</span>
+            </div>
+          </div>
+          <div class="category-notes">
+            ${result[cat].map(n => {
+              const isMulti = multi && Object.values(result).filter(arr => arr.find(x => x.id === n.id)).length > 1;
+              // 判断这篇笔记是不是新归类（applied 里没有，或归到了不同类目）
+              const wasAppliedCats = (u.applied.assignment[n.id] || []).map(c => c.name);
+              const isNewNote = !wasAppliedCats.includes(cat);
+              return `
+                <div class="mini-note" style="--mini-bg:${n.bg}" title="${escapeAttr(n.title)}">
+                  ${isMulti ? '<div class="multi-flag">多</div>' : ''}
+                  ${isNewNote && hasExistingClassification() ? '<div class="new-flag">新</div>' : ''}
+                  <div class="mini-emoji">${n.emoji}</div>
+                  <div class="mini-title">${n.title}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function renderSuggestions() {
+  if (state.pending?.mode !== 'manual') return '';
+  if (state.suggestionsDismissed) return '';
+  if (state.suggestions.length === 0) return '';
+  const otherCount = state.pending.unclassified?.length || 0;
+  if (otherCount === 0) return '';
+
+  return `
+    <div class="suggestion-banner">
+      <div class="sb-title">💡 检测到 ${otherCount} 篇未归类笔记</div>
+      <div class="sb-desc">AI 建议补充：</div>
+      <div class="suggestion-chips">
+        ${state.suggestions.map(s => `
+          <div class="sug-chip ${state.adoptedSuggestions.has(s.cat) ? 'adopted' : ''}"
+               onclick="toggleSuggestion('${escapeAttr(s.cat)}')">
+            <span>${s.rule.emoji}</span>
+            <span>${s.cat}</span>
+            <span style="opacity:0.6;font-size:10px;">+${s.newCoverage}</span>
+          </div>
+        `).join('')}
+      </div>
+      <div class="sug-actions">
+        <button class="sug-btn"
+                ${state.adoptedSuggestions.size === 0 ? 'disabled' : ''}
+                onclick="applySuggestions()">
+          采纳并重新分类 (${state.adoptedSuggestions.size})
+        </button>
+        <span class="sug-dismiss" onclick="dismissSuggestions()">暂不需要</span>
+      </div>
+    </div>
+  `;
+}
+
+/* ============ 交互 ============ */
+function setMode(mode) {
+  state.mode = mode;
+  // 切换模式时清掉粒度（避免残留）
+  if (mode !== 'auto') state.granularity = null;
+  renderPanel();
+}
+
+function setGranularity(g) {
+  state.granularity = g;
+  renderPanel();
+}
+function toggleMulti() { state.multi = !state.multi; renderPanel(); }
+
+function resetStrategy() {
+  state.strategy = null;
+  state.mode = null;
+  state.granularity = null;
+  state.userCategories = [];
+  renderPanel();
+}
+
+function addCategory() {
+  const input = document.getElementById('cat-input');
+  if (!input) return;
+  const val = input.value.trim();
+  if (val && !state.userCategories.includes(val)) {
+    state.userCategories.push(val);
+    input.value = '';
+    renderPanel();
+    document.getElementById('cat-input')?.focus();
+  }
+}
+
+function removeCategory(i) {
+  // 增量模式下，原有类目不能删（chip 上没有 × 按钮，但保险起见再判一次）
+  const u = currentUser();
+  if (state.strategy === 'incremental' && Object.keys(u.applied.categoryMap).includes(state.userCategories[i])) {
+    showToast('原有专辑不能删除');
+    return;
+  }
+  state.userCategories.splice(i, 1);
+  renderPanel();
+}
+
+function quickAdd(name) {
+  if (!state.userCategories.includes(name)) {
+    state.userCategories.push(name);
+    renderPanel();
+  }
+}
+
+function onCategoryHeadClick(e, cat) {
+  if (state.mergingFrom) {
+    if (cat !== state.mergingFrom) {
+      showMergeRenameDialog(state.mergingFrom, cat);
+    }
+    return;
+  }
+  e.currentTarget.closest('.category-result').classList.toggle('open');
+}
+
+function scrollPanel() {
+  document.querySelector('.control-panel').scrollIntoView({behavior:'smooth'});
+}
+
+async function startClassify() {
+  state.classifying = true;
+  state.suggestionsDismissed = false;
+  state.adoptedSuggestions = new Set();
+  state.mergingFrom = null;
+  renderPanel();
+
+  const statusEl = () => document.getElementById('status-text');
+  const noteEl = () => document.getElementById('current-note');
+  const barEl = () => document.getElementById('progress-fill');
+
+  const isIncremental = state.strategy === 'incremental';
+  const u = currentUser();
+
+  // 按比例切分笔记，让动画长度与笔记数适配
+  const slice = (from, to) => notes.slice(Math.floor(notes.length * from), Math.floor(notes.length * to));
+
+  const steps = state.mode === 'auto'
+    ? (isIncremental
+      ? [
+          { txt: '正在分析原有专辑...', notes: slice(0, 0.2) },
+          { txt: '识别未归类笔记...', notes: slice(0.2, 0.5) },
+          { txt: '尝试归入已有专辑...', notes: slice(0.5, 0.85) },
+          { txt: '生成必要的补充专辑...', notes: slice(0.85, 1) },
+        ]
+      : [
+          { txt: '正在阅读所有收藏...', notes: slice(0, 0.3) },
+          { txt: '识别共同主题与差异...', notes: slice(0.3, 0.6) },
+          { txt: '生成合适的专辑体系...', notes: slice(0.6, 0.85) },
+          { txt: '分配笔记到对应专辑...', notes: slice(0.85, 1) },
+        ])
+    : [
+        { txt: '理解你的专辑语义...', notes: slice(0, 0.25) },
+        { txt: '分析笔记内容关键词...', notes: slice(0.25, 0.7) },
+        { txt: '匹配最合适的专辑...', notes: slice(0.7, 1) },
+      ];
+
+  let total = steps.reduce((s, x) => s + x.notes.length, 0);
+  let done = 0;
+  // 动画总时长目标 ~2.5s
+  const perNoteMs = Math.max(20, Math.min(60, Math.floor(2500 / Math.max(1, total))));
+  for (const step of steps) {
+    statusEl().textContent = step.txt;
+    for (const n of step.notes) {
+      noteEl().textContent = `· ${n.title.slice(0, 18)}${n.title.length>18?'...':''}`;
+      done++;
+      barEl().style.width = `${(done/total)*100}%`;
+      await new Promise(r => setTimeout(r, perNoteMs));
+    }
+  }
+
+  // 真正分类
+  let categoryMap, classifyResult;
+
+  // 根据粒度选择对应的 AI 类目预设
+  const aiPreset = state.granularity ? granularityPresets[state.granularity].map : aiAutoCategories;
+
+  if (isIncremental) {
+    // 增量模式：基于已有 categoryMap
+    if (state.mode === 'auto') {
+      // 自动 + 增量：以已有 categoryMap 为主，加少量补充类目
+      categoryMap = JSON.parse(JSON.stringify(u.applied.categoryMap));
+      // 先尝试用已有类目分配
+      classifyResult = runClassify(categoryMap, state.multi);
+      // 找出还没归类的笔记
+      const assignedIds = new Set(Object.keys(classifyResult.assignment).map(Number));
+      const uncovered = notes.filter(n => !assignedIds.has(n.id));
+      // 从粒度对应的预设找最适合的补充类目
+      if (uncovered.length > 0) {
+        // 粒度决定补充数量：粗略最多 2 个，平衡 3 个，细分 5 个
+        const maxAdd = state.granularity === 'fine' ? 5 : (state.granularity === 'coarse' ? 2 : 3);
+        const candidates = Object.entries(aiPreset)
+          .filter(([cat]) => !categoryMap[cat])
+          .map(([cat, rule]) => {
+            const covered = uncovered.filter(n =>
+              n.tags.some(t => rule.match.some(m => t.includes(m) || m.includes(t)))
+            );
+            return { cat, rule, count: covered.length };
+          })
+          .filter(c => c.count >= 2)
+          .sort((a, b) => b.count - a.count)
+          .slice(0, maxAdd);
+        candidates.forEach(c => {
+          categoryMap[c.cat] = c.rule;
+        });
+        // 重新分类
+        classifyResult = runClassify(categoryMap, state.multi);
+      }
+    } else {
+      // 手动 + 增量：用户类目 (原有 + 新增)
+      categoryMap = expandUserCategories(state.userCategories);
+      // 但要保留原有类目的 emoji/bg
+      Object.keys(u.applied.categoryMap).forEach(cat => {
+        if (categoryMap[cat]) {
+          categoryMap[cat].emoji = u.applied.categoryMap[cat].emoji;
+          categoryMap[cat].bg = u.applied.categoryMap[cat].bg;
+        }
+      });
+      classifyResult = runClassify(categoryMap, state.multi);
+    }
+  } else {
+    // 重做或首次
+    if (state.mode === 'auto') {
+      categoryMap = { ...aiPreset };
+      classifyResult = runClassify(categoryMap, state.multi);
+    } else {
+      categoryMap = expandUserCategories(state.userCategories);
+      classifyResult = runClassify(categoryMap, state.multi);
+    }
+  }
+
+  // 手动模式：未匹配的笔记不再自动建「其他」专辑，先存起来等用户应用时再问
+  let unclassified = [];
+  if (state.mode === 'manual') {
+    const assigned = new Set(Object.keys(classifyResult.assignment).map(Number));
+    unclassified = notes.filter(n => !assigned.has(n.id));
+    state.suggestions = generateSuggestions(unclassified);
+  }
+
+  // 清理空类目
+  Object.keys(classifyResult.result).forEach(c => {
+    if (classifyResult.result[c].length === 0) {
+      delete classifyResult.result[c];
+      delete categoryMap[c];
+    }
+  });
+
+  // 计算 diff
+  const diff = computeDiff(u.applied, classifyResult);
+
+  state.pending = {
+    categoryMap,
+    result: classifyResult.result,
+    assignment: classifyResult.assignment,
+    mode: state.mode,
+    multi: state.multi,
+    strategy: state.strategy || 'first',
+    diff,
+    unclassified,  // 未归类的笔记数组
+  };
+  state.classifying = false;
+  await new Promise(r => setTimeout(r, 200));
+  renderAll();
+}
+
+/* ============ Diff 计算 ============ */
+function computeDiff(applied, pending) {
+  const appliedAssignment = applied.assignment;
+  const pendingAssignment = pending.assignment;
+
+  let newAssigned = 0;  // 原本没分类、现在分类了
+  let changed = 0;      // 原本有分类、现在分到了不同类目
+  let kept = 0;         // 没变化
+  let removed = 0;      // 原本分类的、现在没分类
+
+  const allIds = new Set([
+    ...Object.keys(appliedAssignment),
+    ...Object.keys(pendingAssignment),
+  ].map(Number));
+
+  allIds.forEach(id => {
+    const before = (appliedAssignment[id] || []).map(c => c.name).sort().join('|');
+    const after = (pendingAssignment[id] || []).map(c => c.name).sort().join('|');
+    if (!before && after) newAssigned++;
+    else if (before && !after) removed++;
+    else if (before !== after) changed++;
+    else if (before) kept++;
+  });
+
+  return { newAssigned, changed, kept, removed };
+}
+
+/* ============ 应用/放弃 ============ */
+function applyToCollection() {
+  if (!state.pending) return;
+
+  // 如果有未归类的笔记，先弹窗询问要不要建「其他」专辑
+  const unclassified = state.pending.unclassified || [];
+  if (unclassified.length > 0) {
+    showUnclassifiedDialog();
+    return;
+  }
+
+  finalizeApply(false);
+}
+
+// 真正应用（addOther 表示是否把未归类的合并到「其他」专辑）
+function finalizeApply(addOther) {
+  if (!state.pending) return;
+  const u = currentUser();
+
+  const finalMap = { ...state.pending.categoryMap };
+  const finalAssignment = { ...state.pending.assignment };
+
+  if (addOther && state.pending.unclassified?.length > 0) {
+    finalMap['其他'] = { match: [], emoji: '📌', bg: '#f0f0f0' };
+    state.pending.unclassified.forEach(n => {
+      finalAssignment[n.id] = [{ name: '其他', emoji: '📌', bg: '#f0f0f0' }];
+    });
+  }
+
+  u.applied = {
+    categoryMap: finalMap,
+    assignment: finalAssignment,
+  };
+
+  resetWorkflowState();
+  state.appliedFlash = true;
+  showToast(addOther ? '✓ 已应用，未归类笔记已加入「其他」' : '✓ 已应用到收藏夹');
+  renderAll();
+  setTimeout(() => { state.appliedFlash = false; }, 1500);
+}
+
+function showUnclassifiedDialog() {
+  const count = state.pending.unclassified.length;
+  const previewNotes = state.pending.unclassified.slice(0, 5);
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-mask';
+  modal.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-emoji">📌</div>
+      <div class="modal-title">还有 ${count} 篇笔记没归类</div>
+      <div class="modal-desc">
+        要建一个「其他」专辑统一存放吗？
+      </div>
+      <div class="modal-preview">
+        ${previewNotes.map(n => `
+          <div class="modal-preview-item">
+            <div class="modal-preview-emoji" style="background:${n.bg};">${n.emoji}</div>
+            <div class="modal-preview-title">${n.title}</div>
+          </div>
+        `).join('')}
+        ${count > 5 ? `<div class="modal-preview-more">还有 ${count - 5} 篇...</div>` : ''}
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn-secondary" onclick="closeUnclassifiedDialog(false)">保持未归类</button>
+        <button class="modal-btn-primary" onclick="closeUnclassifiedDialog(true)">建「其他」专辑</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  state._modal = modal;
+  // 触发淡入
+  requestAnimationFrame(() => modal.classList.add('show'));
+}
+
+function closeUnclassifiedDialog(addOther) {
+  if (state._modal) {
+    state._modal.classList.remove('show');
+    setTimeout(() => {
+      state._modal?.remove();
+      state._modal = null;
+      finalizeApply(addOther);
+    }, 200);
+  } else {
+    finalizeApply(addOther);
+  }
+}
+
+function discardPending() {
+  if (!confirm('确定放弃这份分类草稿吗？')) return;
+  resetWorkflowState();
+  showToast('已放弃草稿');
+  renderAll();
+}
+
+/* ============ 重命名 ============ */
+function startRename(span, oldName) {
+  if (state.mergingFrom) return;
+  span.setAttribute('contenteditable', 'true');
+  span.focus();
+  const range = document.createRange();
+  range.selectNodeContents(span);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+
+  const finish = (commit) => {
+    span.removeAttribute('contenteditable');
+    span.removeEventListener('blur', onBlur);
+    span.removeEventListener('keydown', onKey);
+    if (commit) {
+      const newName = span.textContent.trim();
+      if (newName && newName !== oldName) {
+        renameCategory(oldName, newName);
+      } else {
+        span.textContent = oldName;
+      }
+    } else {
+      span.textContent = oldName;
+    }
+  };
+
+  const onBlur = () => finish(true);
+  const onKey = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+  };
+  span.addEventListener('blur', onBlur);
+  span.addEventListener('keydown', onKey);
+}
+
+function renameCategory(oldName, newName) {
+  if (state.pending.result[newName]) {
+    showToast(`专辑「${newName}」已存在`);
+    renderPanel();
+    return;
+  }
+  const { result, categoryMap, assignment } = state.pending;
+  result[newName] = result[oldName];
+  delete result[oldName];
+  categoryMap[newName] = categoryMap[oldName];
+  delete categoryMap[oldName];
+  Object.values(assignment).forEach(cats => {
+    cats.forEach(c => { if (c.name === oldName) c.name = newName; });
+  });
+  // 重新计算 diff
+  state.pending.diff = computeDiff(currentUser().applied, { assignment });
+  showToast(`已重命名为「${newName}」`);
+  renderAll();
+}
+
+function deleteCategory(cat) {
+  if (!confirm(`确定从草稿中删除「${cat}」吗？该专辑下的 ${state.pending.result[cat].length} 篇笔记将取消归类。`)) return;
+  const { result, categoryMap, assignment } = state.pending;
+  delete result[cat];
+  delete categoryMap[cat];
+  Object.keys(assignment).forEach(id => {
+    assignment[id] = assignment[id].filter(c => c.name !== cat);
+    if (assignment[id].length === 0) delete assignment[id];
+  });
+  state.pending.diff = computeDiff(currentUser().applied, { assignment });
+  showToast(`已删除「${cat}」`);
+  renderAll();
+}
+
+function startMerge(cat) { state.mergingFrom = cat; renderPanel(); }
+function cancelMerge() { state.mergingFrom = null; renderPanel(); }
+
+/* ============ 合并：智能推荐新专辑名 ============
+   思路：建立子→父语义层级表；合并两个专辑时找它们的最近公共祖先。
+   找不到祖先时，做关键词收缩兜底（共同后缀法）。
+*/
+const categoryHierarchy = {
+  // 美食
+  '减脂饮食': '美食', '减脂晚餐': '美食', '减脂餐': '美食',
+  '居家饮品': '美食', '咖啡饮品': '美食', '咖啡手冲': '美食',
+  '元气饮品': '美食',
+  '快手厨房': '美食', '便当料理': '美食', '日常食谱': '美食',
+  '风味菜系': '美食', '美食食谱': '美食',
+  '高蛋白食谱': '美食',
+  // 穿搭
+  '秋冬穿搭': '穿搭', '通勤穿搭': '穿搭', '日系慵懒': '穿搭',
+  '法式复古': '穿搭', '显瘦技巧': '穿搭', '显瘦显高': '穿搭',
+  '日常穿搭': '穿搭', '穿搭灵感': '穿搭',
+  // 旅行
+  '日本旅行': '旅行', '国内旅行': '旅行', '国内小众': '旅行',
+  '出境旅行': '旅行', '东南亚': '旅行', '东南亚旅行': '旅行',
+  '欧亚远途': '旅行', '自驾路线': '旅行', '周末出游': '旅行',
+  '旅行攻略': '旅行',
+  // 美妆
+  '唇妆推荐': '美妆', '眼妆教程': '美妆', '底妆测评': '美妆',
+  '日常淡妆': '美妆', '香水分享': '美妆', '化妆美妆': '美妆',
+  '美妆化妆': '美妆',
+  // 护肤
+  '抗痘成分': '护肤', '防晒测评': '护肤', '油皮控油': '护肤',
+  '抗老精华': '护肤', '换季护肤': '护肤', '护肤测评': '护肤',
+  '护肤抗痘': '护肤',
+  // 美妆护肤合体
+  '美妆': '美妆护肤', '护肤': '美妆护肤',
+  // 家居
+  '出租屋改造': '家居', '收纳整理': '家居', '收纳好物': '家居',
+  '家装定制': '家居', '厨房客厅': '家居', '绿植香薰': '家居',
+  '家居改造': '家居', '居家好物': '家居',
+  // 健身
+  '力量训练': '健身', '燃脂HIIT': '健身',
+  '瑜伽普拉提': '健身', '冥想放松': '健身',
+  '居家运动': '健身', '舒缓运动': '健身', '体态调整': '健身',
+  // 生活日常
+  '数码生产力': '生活日常', '萌宠日常': '生活日常',
+  '学习方法': '生活日常',
+};
+
+// 把 mergingFrom 和目标 cat 合并后的推荐名
+function suggestMergedName(a, b) {
+  // 1) 查层级表：如果两者父节点相同，推荐父节点
+  const pa = categoryHierarchy[a];
+  const pb = categoryHierarchy[b];
+  if (pa && pb && pa === pb) {
+    return { name: pa, reason: 'hierarchy' };
+  }
+  // 2) 一方是另一方的父：推荐父
+  if (categoryHierarchy[a] === b) return { name: b, reason: 'parent' };
+  if (categoryHierarchy[b] === a) return { name: a, reason: 'parent' };
+  // 3) 共同后缀法：比如 "力量训练" + "有氧训练" → "训练"（去除"力量"/"有氧"，留共同后缀）
+  for (let len = Math.min(a.length, b.length); len >= 2; len--) {
+    if (a.endsWith(a.slice(-len)) && b.endsWith(a.slice(-len))) {
+      const suffix = a.slice(-len);
+      // 长度过短或完全相同则跳过
+      if (suffix.length >= 2 && suffix !== a && suffix !== b) {
+        return { name: suffix, reason: 'suffix' };
+      }
+    }
+  }
+  // 4) 共同前缀法：比如 "日本旅行" + "日本美食" → "日本"
+  for (let len = Math.min(a.length, b.length); len >= 2; len--) {
+    if (a.startsWith(a.slice(0, len)) && b.startsWith(a.slice(0, len))) {
+      const prefix = a.slice(0, len);
+      if (prefix.length >= 2 && prefix !== a && prefix !== b) {
+        return { name: prefix, reason: 'prefix' };
+      }
+    }
+  }
+  // 5) 兜底：沿用目标的名字
+  return { name: b, reason: 'fallback' };
+}
+
+function showMergeRenameDialog(from, to) {
+  const suggestion = suggestMergedName(from, to);
+  const fromRule = state.pending.categoryMap[from];
+  const toRule = state.pending.categoryMap[to];
+  const fromCount = state.pending.result[from]?.length || 0;
+  const toCount = state.pending.result[to]?.length || 0;
+
+  // 把推荐名暂存到 state，输入框 oninput 时实时刷新
+  state._mergePending = { from, to, suggestion };
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-mask merge-modal';
+  modal.innerHTML = `
+    <div class="modal-card" style="text-align:left;">
+      <div style="text-align:center;">
+        <div class="modal-emoji">⇄</div>
+        <div class="modal-title">合并专辑</div>
+      </div>
+      <div class="merge-preview">
+        <div class="merge-cat" style="background:${fromRule.bg};">
+          <div class="mc-emoji">${fromRule.emoji}</div>
+          <div class="mc-name">${from}</div>
+          <div class="mc-count">${fromCount} 篇</div>
+        </div>
+        <div class="merge-plus">+</div>
+        <div class="merge-cat" style="background:${toRule.bg};">
+          <div class="mc-emoji">${toRule.emoji}</div>
+          <div class="mc-name">${to}</div>
+          <div class="mc-count">${toCount} 篇</div>
+        </div>
+      </div>
+
+      <div class="merge-suggest-row">
+        <span class="merge-suggest-label">✨ 推荐名称</span>
+        ${suggestion.reason !== 'fallback' ? `<span class="merge-suggest-tag">${reasonText(suggestion.reason)}</span>` : ''}
+      </div>
+      <input class="merge-name-input" id="merge-name-input" value="${suggestion.name}"
+        placeholder="新专辑名">
+
+      <div class="merge-quick-options">
+        <span class="merge-quick-chip" onclick="useMergeName('${escapeAttr(suggestion.name)}')">
+          ✨ ${suggestion.name}
+        </span>
+        <span class="merge-quick-chip" onclick="useMergeName('${escapeAttr(to)}')">
+          ${to}
+        </span>
+        <span class="merge-quick-chip" onclick="useMergeName('${escapeAttr(from)}')">
+          ${from}
+        </span>
+      </div>
+
+      <div class="modal-actions" style="margin-top:18px;">
+        <button class="modal-btn-secondary" onclick="closeMergeDialog(false)">取消</button>
+        <button class="modal-btn-primary" onclick="confirmMerge()">合并</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  state._modal = modal;
+  requestAnimationFrame(() => modal.classList.add('show'));
+  setTimeout(() => document.getElementById('merge-name-input')?.focus(), 200);
+}
+
+function reasonText(r) {
+  return ({
+    hierarchy: '基于上位概念',
+    parent: '父级专辑',
+    suffix: '共同主题',
+    prefix: '共同主题',
+  })[r] || '';
+}
+
+function useMergeName(name) {
+  const input = document.getElementById('merge-name-input');
+  if (input) {
+    input.value = name;
+    input.focus();
+  }
+}
+
+function closeMergeDialog(execute) {
+  if (state._modal) {
+    state._modal.classList.remove('show');
+    setTimeout(() => {
+      state._modal?.remove();
+      state._modal = null;
+    }, 200);
+  }
+  if (!execute) {
+    // 取消合并：保留 mergingFrom 状态让用户重新选目标
+    state._mergePending = null;
+  }
+}
+
+function confirmMerge() {
+  const input = document.getElementById('merge-name-input');
+  const finalName = (input?.value || '').trim();
+  if (!finalName) {
+    showToast('请输入合并后的专辑名');
+    return;
+  }
+  const { from, to } = state._mergePending;
+  state._mergePending = null;
+  closeMergeDialog(true);
+  setTimeout(() => mergeCategories(from, to, finalName), 220);
+}
+
+function mergeCategories(from, to, finalName) {
+  const { result, categoryMap, assignment } = state.pending;
+  finalName = finalName || to;
+
+  // 合并笔记到目标专辑（去重）
+  const toIds = new Set(result[to].map(n => n.id));
+  result[from].forEach(n => { if (!toIds.has(n.id)) result[to].push(n); });
+
+  // 更新 assignment：from 和 to 都指向新名字
+  Object.keys(assignment).forEach(id => {
+    let updated = false;
+    assignment[id] = assignment[id].map(c => {
+      if (c.name === from || c.name === to) {
+        updated = true;
+        return { name: finalName, emoji: categoryMap[to].emoji, bg: categoryMap[to].bg };
+      }
+      return c;
+    });
+    if (updated) {
+      const seen = new Set();
+      assignment[id] = assignment[id].filter(c => {
+        if (seen.has(c.name)) return false;
+        seen.add(c.name);
+        return true;
+      });
+    }
+  });
+
+  // 如果 finalName 跟 to/from 都不同，需要重命名 result/categoryMap 的 key
+  if (finalName !== to) {
+    result[finalName] = result[to];
+    categoryMap[finalName] = categoryMap[to];
+    delete result[to];
+    delete categoryMap[to];
+  }
+  delete result[from];
+  delete categoryMap[from];
+
+  state.mergingFrom = null;
+  state.pending.diff = computeDiff(currentUser().applied, { assignment });
+  showToast(`已合并为「${finalName}」`);
+  renderAll();
+}
+
+function toggleSuggestion(cat) {
+  if (state.adoptedSuggestions.has(cat)) state.adoptedSuggestions.delete(cat);
+  else state.adoptedSuggestions.add(cat);
+  renderPanel();
+}
+
+function dismissSuggestions() {
+  state.suggestionsDismissed = true;
+  renderPanel();
+}
+
+async function applySuggestions() {
+  if (state.adoptedSuggestions.size === 0) return;
+  const adopted = Array.from(state.adoptedSuggestions);
+  state.adoptedSuggestions.forEach(cat => {
+    if (!state.userCategories.includes(cat)) state.userCategories.push(cat);
+  });
+  state.pending = null; // 让 startClassify 重新走流程
+  await startClassify();
+  showToast(`已采纳 ${adopted.length} 个新专辑`);
+}
+
+/* ============ 工具 ============ */
+function escapeAttr(s) {
+  return String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function renderAll() {
+  renderUserSwitcher();
+  renderPhoneBanner();
+  renderWaterfall();
+  renderPanel();
+}
+
+/* ============ 初始化 ============ */
+rebuildCurrentNotes();
+renderAll();
+</script>
+</body>
+</html>
